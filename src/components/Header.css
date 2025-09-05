@@ -1,0 +1,114 @@
+/* src/components/Header.css */
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    position: relative;
+    -webkit-app-region: drag;
+    user-select: none;
+  }
+  
+  .header-content {
+    display: flex;
+    align-items: center;
+    padding: 20px 24px;
+    gap: 16px;
+    max-width: 100%;
+  }
+  
+  .header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
+  }
+  
+  .header-text {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .header-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .header-subtitle {
+    font-size: 14px;
+    opacity: 0.9;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+  }
+  
+  .header-accent {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
+  }
+  
+  .header-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    margin: 0 24px;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .header-content {
+      padding: 16px 20px;
+      gap: 12px;
+    }
+    
+    .header-title {
+      font-size: 20px;
+    }
+    
+    .header-subtitle {
+      font-size: 13px;
+    }
+    
+    .header-icon {
+      width: 36px;
+      height: 36px;
+    }
+    
+    .header-accent {
+      width: 32px;
+      height: 32px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .header-content {
+      padding: 14px 16px;
+      gap: 10px;
+    }
+    
+    .header-title {
+      font-size: 18px;
+    }
+    
+    .header-subtitle {
+      font-size: 12px;
+    }
+    
+    .header-divider {
+      margin: 0 16px;
+    }
+  }

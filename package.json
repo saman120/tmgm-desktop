@@ -1,0 +1,105 @@
+{
+    "name": "tmgm-desktop",
+    "version": "1.0.0",
+    "description": "A macOS task management app built with Electron and React",
+    "main": "public/electron.js",
+    "homepage": "./",
+    "scripts": {
+      "electron": "electron .",
+      "electron-dev": "ELECTRON_IS_DEV=true electron .",
+      "electron-pack": "electron-builder",
+      "preelectron-pack": "npm run build",
+      "start": "react-scripts start",
+      "build": "react-scripts build",
+      "test": "react-scripts test",
+      "eject": "react-scripts eject",
+      "dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && npm run electron-dev\"",
+      "pack": "npm run build && electron-builder --dir",
+      "dist": "npm run build && electron-builder --publish=never",
+      "build-mac": "npm run build && electron-builder --mac"
+    },
+    "keywords": [
+      "task-manager",
+      "productivity",
+      "electron",
+      "react",
+      "macos"
+    ],
+    "author": "Your Name",
+    "license": "MIT",
+    "dependencies": {
+      "@testing-library/jest-dom": "^5.16.4",
+      "@testing-library/react": "^13.3.0",
+      "@testing-library/user-event": "^13.5.0",
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0",
+      "react-scripts": "5.0.1",
+      "lucide-react": "^0.263.1"
+    },
+    "devDependencies": {
+      "electron": "^28.0.0",
+      "electron-builder": "^24.6.4",
+      "concurrently": "^7.6.0",
+      "wait-on": "^7.0.1"
+    },
+    "build": {
+      "appId": "com.yourcompany.taskmanager",
+      "productName": "TMGM",
+      "directories": {
+        "output": "dist",
+        "buildResources": "assets"
+      },
+      "files": [
+        "build/**/*",
+        "public/electron.js",
+        "public/preload.js",
+        "assets/**/*"
+      ],
+      "mac": {
+        "category": "public.app-category.productivity",
+        "icon": "assets/icon.icns",
+        "target": [
+          {
+            "target": "dmg",
+            "arch": ["x64", "arm64"]
+          }
+        ],
+        "extendInfo": {
+          "LSUIElement": false,
+          "NSUserNotificationAlertStyle": "alert"
+        }
+      },
+      "dmg": {
+        "contents": [
+          {
+            "x": 130,
+            "y": 220
+          },
+          {
+            "x": 410,
+            "y": 220,
+            "type": "link",
+            "path": "/Applications"
+          }
+        ]
+      }
+    },
+    "browserslist": {
+      "production": [
+        ">0.2%",
+        "not dead",
+        "not op_mini all"
+      ],
+      "development": [
+        "last 1 chrome version",
+        "last 1 firefox version",
+        "last 1 safari version"
+      ]
+    },
+    "eslintConfig": {
+      "extends": [
+        "react-app",
+        "react-app/jest"
+      ]
+    }
+  }
