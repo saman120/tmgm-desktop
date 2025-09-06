@@ -23,7 +23,7 @@ function App() {
       
       // Sort tasks: in-progress first, then pending, then completed, all by created_at desc
       const sortedTasks = fetchedTasks.sort((a, b) => {
-        const statusOrder = { 'in-progress': 0, 'pending': 1, 'completed': 2 };
+        const statusOrder = { 'in-progress': 0, 'pending': 1, 'completed': 2, 'hold': 3 };
         const statusDiff = statusOrder[a.status] - statusOrder[b.status];
         
         if (statusDiff !== 0) return statusDiff;
@@ -167,10 +167,10 @@ function App() {
   // Handle task status toggle
   const handleStatusToggle = async (taskId, currentStatus) => {
     const statusCycle = {
-      'pending': 'in-progress',
+      'hold': 'in-progress',
       'in-progress': 'completed',
-      'completed': 'hold',
-      'hold': 'pending'
+      'completed': 'pending',
+      'pending': 'hold'
     };
 
     const newStatus = statusCycle[currentStatus];

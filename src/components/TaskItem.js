@@ -93,7 +93,7 @@ const TaskItem = ({
       case 'completed':
         return '✔';
       default:
-        return '❓';
+        return '';
     }
   };
 
