@@ -202,17 +202,24 @@
   }
   
   .card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   }
   
   /* Status indicators */
   .status-indicator {
-    width: 12px;
-    height: 12px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     flex-shrink: 0;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    border: 1px solid white;
+    justify-content: center !important;
+  }
+  .status-indicator:hover {
+    border: 1px solid blue;
+    cursor: pointer;
   }
   
   .status-indicator.pending {
@@ -322,41 +329,6 @@
     line-height: 1.5;
   }
   
-  /* Responsive design */
-  @media (max-width: 768px) {
-    .app {
-      height: 100vh;
-    }
-    
-    .btn {
-      padding: 10px 16px;
-      font-size: 16px;
-    }
-    
-    .input {
-      padding: 14px 16px;
-      font-size: 16px;
-    }
-    
-    .card {
-      border-radius: 12px;
-      margin: 8px;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .empty-state {
-      padding: 40px 20px;
-    }
-    
-    .empty-state h3 {
-      font-size: 20px;
-    }
-    
-    .empty-state p {
-      font-size: 14px;
-    }
-  }
   
   /* High contrast mode support */
   @media (prefers-contrast: high) {

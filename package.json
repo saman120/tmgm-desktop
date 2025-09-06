@@ -13,7 +13,7 @@
       "build": "react-scripts build",
       "test": "react-scripts test",
       "eject": "react-scripts eject",
-      "dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && npm run electron-dev\"",
+      "dev": "concurrently \"npm start\" \"wait-on http://localhost:3240 && npm run electron-dev\"",
       "pack": "npm run build && electron-builder --dir",
       "dist": "npm run build && electron-builder --publish=never",
       "build-mac": "npm run build && electron-builder --mac"

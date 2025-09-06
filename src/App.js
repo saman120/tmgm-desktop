@@ -57,6 +57,7 @@ function App() {
   // Update existing task
   const updateTask = async (taskId, updates) => {
     try {
+      setLoading(true);
       setError(null);
       await taskAPI.updateTask(taskId, updates);
       await loadTasks(); // Reload to ensure proper sorting
@@ -64,12 +65,15 @@ function App() {
       console.error('Failed to update task:', err);
       setError('Failed to update task. Please try again.');
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
   // Update existing task
   const deleteTask = async (taskId) => {
     try {
+      setLoading(true);
       setError(null);
       await taskAPI.deleteTask(taskId);
       await loadTasks(); // Reload to ensure proper sorting
@@ -77,6 +81,8 @@ function App() {
       console.error('Failed to update task:', err);
       setError('Failed to update task. Please try again.');
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -126,7 +132,7 @@ function App() {
       if (inProgressTask) {
         await window.electronAPI.showNotification({
           title: 'Task Reminder',
-          body: `You have a task in progress: ${inProgressTask.description.substring(0, 50)}${inProgressTask.description.length > 50 ? '...' : ''}`,
+          body: `In progress: ${inProgressTask.description.substring(0, 50)}${inProgressTask.description.length > 50 ? '...' : ''}`,
           silent: false
         });
       }
@@ -200,7 +206,6 @@ function App() {
             onStatusToggle={handleStatusToggle}
             onDescriptionUpdate={handleDescriptionUpdate}
             onDelete={handleDelete}
-            onRefresh={loadTasks}
           />
         )}
       </main>
@@ -208,6 +213,7 @@ function App() {
       <footer className="app-footer">
         <AddTaskForm
           isOpen={isAddingTask}
+          onRefresh={loadTasks}
           onOpen={() => setIsAddingTask(true)}
           onClose={() => setIsAddingTask(false)}
           onSubmit={createTask}

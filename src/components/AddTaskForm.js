@@ -1,9 +1,9 @@
 // src/components/AddTaskForm.js
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, X, Save } from 'lucide-react';
+import { Plus, X, Save, RefreshCw } from 'lucide-react';
 import './AddTaskForm.css';
 
-const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit }) => {
+const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef(null);
@@ -49,6 +49,14 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit }) => {
           <Plus size={20} />
           <span>Add New Task</span>
         </button>
+
+        <button 
+          className="refresh-button"
+          onClick={onRefresh}
+          title="Refresh tasks"
+        >
+          <RefreshCw size={16} />
+        </button>
       </div>
     );
   }
@@ -66,7 +74,7 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit }) => {
             onKeyDown={handleKeyDown}
             placeholder="What needs to be done?"
             className="task-input"
-            maxLength={200}
+            maxLength={500}
             disabled={isSubmitting}
             required
           />

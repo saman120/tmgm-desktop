@@ -87,11 +87,11 @@ const TaskItem = ({
   const getStatusIcon = (status) => {
     switch (status) {
       case 'pending':
-        return '⏳';
+        return '';
       case 'in-progress':
-        return '⚡';
+        return '';
       case 'completed':
-        return '✅';
+        return '✔';
       default:
         return '❓';
     }
@@ -99,19 +99,10 @@ const TaskItem = ({
 
   return (
     <div className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} fade-in`}>
+    <div className="task-actions">
+    <div className={`status-indicator ${task.status}`} onClick={handleStatusClick}>{getStatusIcon(task.status)}</div>
+    </div>
       <div className="task-content">
-        <div className="task-header">
-          <div className={`status-indicator ${task.status}`}></div>
-          <div className="task-meta">
-            {isFirst && task.status === 'in-progress' && (
-              <span className="current-badge">Current Task</span>
-            )}
-            <span className="task-time">
-              {formatDistanceToNow(new Date(task.created_at || task.createdAt))}
-            </span>
-          </div>
-        </div>
-        
         <div className="task-description-container">
           {isEditing ? (
             <input
@@ -135,24 +126,15 @@ const TaskItem = ({
           )}
         </div>
       </div>
-      
       <div className="task-actions">
-        <button
-          className={`status-button ${task.status}`}
-          onClick={handleStatusClick}
-          title={`Change status to ${getStatusButtonText(task.status).toLowerCase()}`}
-        >
-          <span className="status-icon">{getStatusIcon(task.status)}</span>
-          <span className="status-text">{getStatusButtonText(task.status)}</span>
-        </button>
-        <button
-        className='delete-button'
-          title={`Delete task`}
-          onClick={handleDeleteClick}
-        >
-          <span className="status-icon">🗑️ {(confirmDelete && (confirmDelete > new Date())) ? 'Click Twice': 'Delete'}</span>
-        </button>
-      </div>
+      <button
+      className='delete-button'
+        title={`Delete task`}
+        onClick={handleDeleteClick}
+      >
+        <span className="status-icon">❌ </span>
+      </button>
+    </div>
     </div>
   );
 };
