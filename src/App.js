@@ -130,15 +130,17 @@ function App() {
       const nextTask = new Date().getMinutes() < 2 ? "Rest": new Date().getMinutes() < 7 ? 'Prepare' : new Date().getMinutes() < 54 ? 'Work': 'Rest';
       const title = new Date().getMinutes() < 12 ? "Rest": new Date().getMinutes() < 17 ? 'Prepare' : 'Work';
       
-      inProgressTask.timeSlot = (inProgressTask.timeSlot || 0)+1;
-        await window.electronAPI.showNotification({
-          title: title === nextTask ? title : `${title} >> ${nextTask}`,
-          body: `${inProgressTask.timeSlot ? (inProgressTask.timeSlot+1)+ '*': ''} ${inProgressTask.description.substring(0, 50)}${inProgressTask.description.length > 50 ? '...' : ''}`,
-          silent: false
-        });
+      if (title !== 'Rest' && title !== 'Prepare') inProgressTask.timeSlot = (inProgressTask.timeSlot || 0)+1;
+
+      await window.electronAPI.showNotification({
+        title: title === nextTask ? title : `${title} >> ${nextTask}`,
+        body: `${inProgressTask.timeSlot ? (inProgressTask.timeSlot+1)+ '*': ''} ${inProgressTask.description.substring(0, 50)}${inProgressTask.description.length > 50 ? '...' : ''}`,
+        silent: false
+      });
+      if(title !== 'Rest' && title !== 'Prepare'){
         await updateTask(inProgressTask._id, { timeSlot: inProgressTask.timeSlot  });
         setTasks(tasks);
-      
+      }
     }));
 
     // Listen for notification clicks
