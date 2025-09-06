@@ -21,11 +21,12 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
     if (!trimmedDescription || isSubmitting) return;
 
     try {
-      await onSubmit(trimmedDescription);
       setDescription('');
+      await onSubmit(trimmedDescription);
       
     } catch (error) {
       console.error('Failed to create task:', error);
+      setDescription(trimmedDescription);
       // Keep form open on error so user can retry
     } finally {
     }

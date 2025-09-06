@@ -91,7 +91,7 @@ function createTray() {
 
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: 'Show Task Manager',
+            label: 'Show TMGM',
             click: () => {
                 if (mainWindow) {
                     if (mainWindow.isVisible()) {
@@ -103,29 +103,9 @@ function createTray() {
                 }
             }
         },
-        {
-            label: 'Complete Current Task',
-            click: () => {
-                if (mainWindow) {
-                    mainWindow.webContents.send('complete-current-task');
-                }
-            }
-        },
         { type: 'separator' },
         {
-            label: 'About Task Manager',
-            click: () => {
-                require('electron').dialog.showMessageBox(mainWindow, {
-                    type: 'info',
-                    title: 'About Task Manager',
-                    message: 'Task Manager v1.0.0',
-                    detail: 'A modern task management app for macOS\nBuilt with Electron and React'
-                });
-            }
-        },
-        { type: 'separator' },
-        {
-            label: 'Quit Task Manager',
+            label: 'Quit TMGM',
             accelerator: 'Cmd+Q',
             click: () => {
                 app.isQuitting = true;

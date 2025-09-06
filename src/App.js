@@ -73,16 +73,14 @@ function App() {
   // Update existing task
   const deleteTask = async (taskId) => {
     try {
-      setLoading(true);
       setError(null);
       await taskAPI.deleteTask(taskId);
-      await loadTasks(); // Reload to ensure proper sorting
+      setTasks(tasks.filter(t=> t._id !== taskId)); // Reload to ensure proper sorting
     } catch (err) {
       console.error('Failed to update task:', err);
       setError('Failed to update task. Please try again.');
       throw err;
     } finally {
-      setLoading(false);
     }
   };
 
