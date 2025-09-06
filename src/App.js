@@ -28,7 +28,7 @@ function App() {
         
         if (statusDiff !== 0) return statusDiff;
         
-        return new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt);
+        return new Date(a.created_at || a.createdAt) - new Date(b.created_at || b.createdAt);
       });
       
       setTasks(sortedTasks);
@@ -127,13 +127,18 @@ function App() {
     cleanup.push(window.electronAPI.onCheckInProgressTask(async () => {
       console.log('notification: in progess task check')
       const inProgressTask = tasks.find(task => task.status === 'in-progress');
-      if (inProgressTask) {
+      const nextTask = new Date().getMinutes() < 2 ? "Rest": new Date().getMinutes() < 7 ? 'Prepare' : new Date().getMinutes() < 54 ? 'Work': 'Rest';
+      const title = new Date().getMinutes() < 12 ? "Rest": new Date().getMinutes() < 17 ? 'Prepare' : 'Work';
+      
+      inProgressTask.timeSlot = inProgressTask.timeSlot+1;
+      updateTask(inProgressTask._id, { timeSlot: inProgressTask.timeSlot  });
+      setTasks(tasks);
         await window.electronAPI.showNotification({
-          title: 'Task Reminder',
-          body: `In progress: ${inProgressTask.description.substring(0, 50)}${inProgressTask.description.length > 50 ? '...' : ''}`,
+          title: title === nextTask ? title : `${title} >> ${nextTask}`,
+          body: `${inProgressTask.timeSlot ? inProgressTask.timeSlot+ '*': ''} ${inProgressTask.description.substring(0, 50)}${inProgressTask.description.length > 50 ? '...' : ''}`,
           silent: false
         });
-      }
+      
     }));
 
     // Listen for notification clicks
