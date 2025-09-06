@@ -169,7 +169,8 @@ function App() {
     const statusCycle = {
       'pending': 'in-progress',
       'in-progress': 'completed',
-      'completed': 'pending'
+      'completed': 'hold',
+      'hold': 'pending'
     };
 
     const newStatus = statusCycle[currentStatus];

@@ -176,6 +176,11 @@
     color: white;
   }
   
+  .status-button.hold {
+    background: linear-gradient(135deg, #6e6e6e 0%, #696969 100%);
+    color: white;
+  }
+  
   .status-icon {
     font-size: 12px;
   }
