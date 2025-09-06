@@ -75,7 +75,7 @@ function App() {
     try {
       setError(null);
       await taskAPI.deleteTask(taskId);
-      setTasks(tasks.filter(t=> t._id !== taskId)); // Reload to ensure proper sorting
+      setTasks(ts=>ts.filter(t=> t._id !== taskId)); // Reload to ensure proper sorting
     } catch (err) {
       console.error('Failed to update task:', err);
       setError('Failed to update task. Please try again.');

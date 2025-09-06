@@ -129,14 +129,16 @@ function setupNotificationTimer() {
         console.log("notification timer: cleared");
         clearInterval(notificationTimer);
     }
-
-    notificationTimer = setInterval(() => {
-        console.log("notification timer: execution");
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            console.log("notification timer: execution 2");
-            mainWindow.webContents.send('check-in-progress-task');
-        }
-    }, 300000); // 5 minutes
+    
+    setTimeout(()=>{
+        notificationTimer = setInterval(() => {
+            console.log("notification timer: execution");
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                console.log("notification timer: execution 2");
+                mainWindow.webContents.send('check-in-progress-task');
+            }
+        }, 300000); // 5 minutes
+    }, (5 - (new Date(new Date().setMinutes(new Date().getMinutes()+5)).getMinutes() % 5)) * 60000)
 }
 
 // IPC handlers
