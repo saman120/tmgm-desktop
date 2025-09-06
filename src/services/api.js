@@ -1,5 +1,5 @@
 // src/services/api.js - API service for task management
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3840';
 
 class APIError extends Error {
   constructor(message, status) {
