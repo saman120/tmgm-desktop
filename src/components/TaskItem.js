@@ -60,9 +60,9 @@ const TaskItem = ({
     }
   };
 
-  const handleStatusClick = async () => {
+  const handleStatusClick = async (status) => {
     try {
-      await onStatusToggle(task._id, task.status);
+      await onStatusToggle(task._id, task.status, status);
     } catch (error) {
       console.error('Failed to toggle status:', error);
     }
@@ -100,7 +100,7 @@ const TaskItem = ({
   return (
     <div className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} fade-in`}>
     <div className="task-actions">
-    <div className={`status-indicator ${task.status}`} onClick={handleStatusClick}>{getStatusIcon(task.status)}</div>
+    <div className={`status-indicator ${task.status}`} onClick={()=>handleStatusClick()}>{getStatusIcon(task.status)}</div>
     </div>
       <div className="task-content">
         <div className="task-description-container">
@@ -133,6 +133,20 @@ const TaskItem = ({
         onClick={handleDeleteClick}
       >
         <span className="status-icon">❌ </span>
+      </button>
+      <button
+      className='delete-button'
+        title={`Delete task`}
+        onClick={()=>handleStatusClick('hold')}
+      >
+        <span className="status-icon">🚫 </span>
+      </button>
+      <button
+      className='delete-button'
+        title={`Delete task`}
+        onClick={()=>handleStatusClick('pending')}
+      >
+        <span className="status-icon">⌛ </span>
       </button>
     </div>
     </div>

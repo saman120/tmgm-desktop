@@ -167,15 +167,14 @@ function App() {
   }, [loadTasks]);
 
   // Handle task status toggle
-  const handleStatusToggle = async (taskId, currentStatus) => {
+  const handleStatusToggle = async (taskId, currentStatus, status) => {
     const statusCycle = {
       'hold': 'in-progress',
       'in-progress': 'completed',
-      'completed': 'pending',
-      'pending': 'hold'
+      'pending': 'in-progress'
     };
 
-    const newStatus = statusCycle[currentStatus];
+    const newStatus = status || statusCycle[currentStatus];
     await updateTask(taskId, { status: newStatus });
   };
 
