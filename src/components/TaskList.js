@@ -50,33 +50,19 @@ const TaskList = ({
         return orderA - orderB; 
       }
 
-      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
     });
   };
 
   const orderedTasks = sortTasks(filteredTasks);
 
-  const hourlyStats = useMemo(() => {
-    const stats = {};
-    orderedTasks.forEach(task => {
-      if (task.status === 'completed' && task.updatedAt) {
-        const taskDate = new Date(task.updatedAt);
-        const groupKey = `${taskDate.toLocaleDateString()}-${taskDate.getHours()}`;
-        if (!stats[groupKey]) {
-          stats[groupKey] = { delayCount: 0, distractionCount: 0 };
-        }
-        stats[groupKey].delayCount += (task.delayCount || 0);
-        stats[groupKey].distractionCount += (task.distractionCount || 0);
-      }
-    });
-    return stats;
-  }, [orderedTasks]);const stats = useMemo(() => {
+  const stats = useMemo(() => {
     const daily = {};
     const hourly = {};
     
     orderedTasks.forEach(task => {
-      if (task.status === 'completed' && task.updatedAt) {
-        const taskDate = new Date(task.updatedAt);
+      if (task.status === 'completed' && (task.completedAt || task.updatedAt)) {
+        const taskDate = new Date(task.completedAt || task.updatedAt);
         const dayKey = taskDate.toLocaleDateString();
         const hourKey = `${dayKey}-${taskDate.getHours()}`;
 
@@ -210,8 +196,8 @@ const TaskList = ({
           let dayDivider = null;
           let hourDivider = null;
 
-          if (task.status === 'completed' && task.updatedAt) {
-            const taskDate = new Date(task.updatedAt);
+          if (task.status === 'completed' && (task.completedAt || task.updatedAt)) {
+            const taskDate = new Date(task.completedAt || task.updatedAt);
             const dayKey = taskDate.toLocaleDateString();
             const hour = taskDate.getHours();
             const hourKey = `${dayKey}-${hour}`;

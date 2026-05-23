@@ -28,7 +28,7 @@ function App() {
         
         if (statusDiff !== 0) return statusDiff;
         
-        return new Date(a.created_at || a.createdAt) - new Date(b.created_at || b.createdAt);
+        return new Date(b.created_at || b.createdAt) -  new Date(a.created_at || a.createdAt);
       });
       
       setTasks(sortedTasks);

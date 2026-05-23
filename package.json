@@ -1,6 +1,6 @@
 {
     "name": "tmgm-desktop",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "A macOS task management app built with Electron and React",
     "main": "public/electron.js",
     "homepage": "./",
