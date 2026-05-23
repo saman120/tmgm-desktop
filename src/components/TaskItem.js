@@ -187,11 +187,38 @@ const TaskItem = ({
     }
   };
 
+  const getCompletedStyle = () => {
+    if (task.status !== 'completed') return {};
+    
+    const dC = task.delayCount || 0;
+    const distC = task.distractionCount || 0;
+
+    let delayColor = 'rgba(235, 248, 235, 0.9)'; // Greenish base
+    
+    // Purple for 0 delays
+    if (dC < 1) delayColor = 'rgba(230, 210, 255, 0.9)'; 
+    else if (dC > 1 && dC <= 2) delayColor = 'rgba(255, 224, 224, 0.9)'; // slight red
+    else if (dC > 2 && dC <= 5) delayColor = 'rgba(255, 180, 180, 0.9)'; // more red
+    else if (dC > 5 && dC <= 10) delayColor = 'rgba(255, 120, 120, 0.9)'; // critical red
+    else if (dC > 10) delayColor = 'rgba(255, 70, 70, 0.9)'; // bad red
+
+    let distColor = 'rgba(235, 248, 235, 0.9)'; // Greenish base
+    if (distC > 1 && distC <= 5) distColor = 'rgba(255, 245, 180, 0.9)'; // slight yellow
+    else if (distC > 5 && distC <= 10) distColor = 'rgba(255, 220, 120, 0.9)'; // more yellow
+    else if (distC > 10) distColor = 'rgba(255, 190, 70, 0.9)'; // critical yellow
+
+    return { 
+      background: `linear-gradient(135deg, ${delayColor} 0%, ${distColor} 100%)`,
+      color: '#1d1d1f' // Keep text dark and readable
+    };
+  };
+
   return (
     <>
       <div 
         className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} ${dragOverClass || ''} fade-in`}
         draggable={task.status !== 'completed'}
+        style={getCompletedStyle()} // <-- CRUCIAL: This applies the background color to the task!
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
