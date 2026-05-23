@@ -267,21 +267,27 @@ const TaskItem = ({
         
         <div className="task-actions-right">
           {!isLoading && <>
-            <button 
+            {(task.status !== 'completed' || !!task.remarks?.length) && <button 
               className="count-button remarks-btn" 
               title="Double-click to View/Add Remarks" 
               onDoubleClick={openRemarksModal}
             >
               <span className="status-icon">💬</span> {task.remarks?.length || 0}
-            </button>
+            </button>}
 
-            <button 
+            {(task.status !== 'completed' || !!task.distractionCount) && <button 
               className="count-button" 
               title="Double-click to increment Distractions" 
               onDoubleClick={handleIncrementDistraction}
             >
               <span className="status-icon">😵</span> {task.distractionCount || 0}
-            </button>
+            </button>}
+
+            {(task.status !== 'completed' && !!task.delayCount) && <button 
+              className="count-button" 
+            >
+              <span className="status-icon">⏰</span> {task.delayCount || 0}
+            </button>}
 
             <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
               <span className="status-icon">⌛ </span>
