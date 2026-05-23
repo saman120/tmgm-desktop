@@ -130,9 +130,9 @@ const TaskList = ({
 
     let newOrder;
     if (!prevTask) {
-      newOrder = (nextTask?.order || 0) - 1024;
+      newOrder = (nextTask?.order || 0) - 10;
     } else if (!nextTask) {
-      newOrder = (prevTask?.order || 0) + 1024;
+      newOrder = (prevTask?.order || 0) + 10;
     } else {
       newOrder = (prevTask.order + nextTask.order) / 2;
     }
