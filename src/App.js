@@ -109,14 +109,18 @@ function App() {
   const handleDelete = async (taskId) => {
     await deleteTask(taskId);
   };
-  
-  const handleReorder = async (sourceIndex, destinationIndex) => {
-    const updatedTasks = Array.from(tasks);
-    const [movedTask] = updatedTasks.splice(sourceIndex, 1);
-    updatedTasks.splice(destinationIndex, 0, movedTask);
-    
-    setTasks(updatedTasks);
-  };
+
+  const handleReorder = async (taskId, newOrder) => {
+    // 1. Optimistically update the UI instantly
+    setTasks(tasks => 
+      tasks.map(task => 
+        task._id === taskId 
+          ? { ...task, order: newOrder } 
+          : task
+      )
+    );
+    await updateTask(taskId, { order: newOrder });
+  }
 
   // Clear error message
   const clearError = () => setError(null);

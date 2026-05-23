@@ -244,3 +244,55 @@
   transform: scale(0.98);
   border: 1px dashed #007AFF;
 }
+
+/* NEW: Dynamic Animated Drop Zones */
+
+/* Space above the target */
+.task-item.drag-over-top {
+  padding-top: 52px;
+  position: relative;
+}
+
+.task-item.drag-over-top::before {
+  content: 'Drop here';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #007AFF;
+  font-size: 13px;
+  font-weight: 600;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  height: 44px;
+  background: rgba(0, 122, 255, 0.05);
+  border: 2px dashed #007AFF;
+  border-radius: 4px;
+  pointer-events: none; /* Crucial: stops the placeholder from breaking hover logic */
+}
+
+/* Space below the target */
+.task-item.drag-over-bottom {
+  padding-bottom: 52px;
+  position: relative;
+}
+
+.task-item.drag-over-bottom::after {
+  content: 'Drop here';
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #007AFF;
+  font-size: 13px;
+  font-weight: 600;
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  height: 44px;
+  background: rgba(0, 122, 255, 0.05);
+  border: 2px dashed #007AFF;
+  border-radius: 4px;
+  pointer-events: none;
+}

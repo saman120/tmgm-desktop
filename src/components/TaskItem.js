@@ -13,7 +13,8 @@ const TaskItem = ({
   onDragOver,
   onDrop,
   onDragEnd,
-  isDragged
+  isDragged,
+  dragOverClass // NEW
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -95,14 +96,14 @@ const TaskItem = ({
 
   return (
     <div 
-      className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} fade-in`}
-      draggable={draggable}
+      // NEW: Added the dragOverClass to the template literal below
+      className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} ${dragOverClass || ''} fade-in`}
+      draggable={task.status !=='completed'}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
     >
-      {/* SVG Drag Handle on the far left */}
       <div className="drag-handle" title="Drag to reorder">
         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="9" cy="5" r="1"></circle>
@@ -115,7 +116,8 @@ const TaskItem = ({
       </div>
       
       <div className="task-actions">
-        <div className={`status-indicator ${task.status}`} onClick={() => handleStatusClick()}>{getStatusIcon(task.status)}</div>
+      {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
+        {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{getStatusIcon(task.status)}</div>}
       </div>
       
       <div className="task-content">
@@ -144,7 +146,6 @@ const TaskItem = ({
       </div>
       
       <div className="task-actions">
-        {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
         {!isLoading && <>
           <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
           <span className="status-icon">⌛ </span>

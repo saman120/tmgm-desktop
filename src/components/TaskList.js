@@ -13,20 +13,17 @@ const TaskList = ({
   onReorder 
 }) => {
   const [draggedIndex, setDraggedIndex] = useState(null);
-  const [showRecent, setShowRecent] = useState(true); // NEW: Toggle state
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [showRecent, setShowRecent] = useState(true);
 
   if (tasks.length === 0) {
     return <EmptyState onRefresh={onRefresh} />;
   }
 
-  // NEW: Filter logic
   const filteredTasks = showRecent 
     ? tasks.filter(task => {
-        // Exclude 'hold' tasks
         if (task.status === 'hold') return false;
         
-        // Check if task is within the last 14 days
-        // (Assuming 'updatedAt' exists. If not, fallback to 'createdAt' or just return true)
         const dateString = task.updatedAt || task.createdAt;
         if (!dateString) return true; 
         
@@ -38,56 +35,116 @@ const TaskList = ({
       })
     : tasks;
 
-  // Drag and Drop Handlers (Updated to use original array indices)
-  const handleDragStart = (e, originalIndex) => {
-    setDraggedIndex(originalIndex);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', originalIndex);
+  const sortTasks = (tasksToSort) => {
+    const statusOrder = ['in-progress', 'pending', 'hold', 'completed'];
+
+    return [...tasksToSort].sort((a, b) => {
+      const statusA = statusOrder.indexOf(a.status || 'unknown');
+      const statusB = statusOrder.indexOf(b.status || 'unknown');
+
+      if (statusA !== statusB) {
+        return statusA - statusB;
+      }
+
+      const orderA = a.order !== undefined ? a.order : 0;
+      const orderB = b.order !== undefined ? b.order : 0;
+
+      if (orderA !== orderB) {
+        return orderA - orderB; 
+      }
+
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
   };
 
-  const handleDragOver = (e) => {
+  const orderedTasks = sortTasks(filteredTasks);
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e, index) => {
     e.preventDefault(); 
     e.dataTransfer.dropEffect = 'move';
+    
+    if (draggedIndex !== null && draggedIndex !== index) {
+      if (dragOverIndex !== index) {
+        setDragOverIndex(index);
+      }
+    }
   };
 
-  const handleDrop = (e, originalDropIndex) => {
+  // REMOVED: handleDragLeaveList has been completely removed to prevent bubbling flickers
+
+  const handleDrop = (e, dropIndex) => {
     e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== originalDropIndex) {
-      onReorder(draggedIndex, originalDropIndex);
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
     }
+
+    const newArray = [...orderedTasks];
+    const [draggedTask] = newArray.splice(draggedIndex, 1);
+    newArray.splice(dropIndex, 0, draggedTask);
+
+    const prevTask = newArray[dropIndex - 1];
+    const nextTask = newArray[dropIndex + 1];
+
+    let newStatus = draggedTask.status;
+    if (prevTask && nextTask && prevTask.status === nextTask.status) {
+      newStatus = prevTask.status;
+    } else if (prevTask) {
+      newStatus = prevTask.status;
+    } else if (nextTask) {
+      newStatus = nextTask.status;
+    }
+
+    let newOrder;
+    if (!prevTask) {
+      newOrder = (nextTask?.order || 0) - 1;
+    } else if (!nextTask) {
+      newOrder = (prevTask?.order || 0) + 1;
+    } else {
+      newOrder = (prevTask.order + nextTask.order) / 2;
+    }
+
+    onReorder(draggedTask._id, newOrder, newStatus);
     setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleDragEnd = () => {
     setDraggedIndex(null);
+    setDragOverIndex(null); // This safely closes the drop zone if the user lets go of the mouse outside the window
   };
 
   let lastGroupKey = null;
 
   return (
+    // REMOVED: onDragLeave listener from this container div
     <div className="task-list-container">
-      {/* NEW: Toggle Header */}
       <div className="task-list-header">
         <div className="toggle-container">
           <button 
             className={`toggle-btn ${showRecent ? 'active' : ''}`}
             onClick={() => setShowRecent(true)}
           >
-            Recent
+            Recent Active
           </button>
           <button 
             className={`toggle-btn ${!showRecent ? 'active' : ''}`}
             onClick={() => setShowRecent(false)}
           >
-            All
+            All Tasks
           </button>
         </div>
       </div>
 
       <div className="task-list">
-        {filteredTasks.map((task) => {
-          // Find the task's true index in the un-filtered array for accurate reordering
-          const originalIndex = tasks.findIndex(t => t._id === task._id);
+        {orderedTasks.map((task, index) => {
           let divider = null;
 
           if (task.status === 'completed' && task.updatedAt) {
@@ -112,26 +169,32 @@ const TaskList = ({
             }
           }
 
+          let dragOverClass = '';
+          if (dragOverIndex === index) {
+            dragOverClass = draggedIndex < index ? 'drag-over-bottom' : 'drag-over-top';
+          }
+
           return (
             <React.Fragment key={task._id}>
               {divider}
               <TaskItem
                 task={task}
-                isFirst={originalIndex === 0}
+                isFirst={index === 0 && task.status === 'in-progress'}
                 onStatusToggle={onStatusToggle}
                 onDescriptionUpdate={onDescriptionUpdate}
                 onDelete={onDelete}
                 draggable={true}
-                onDragStart={(e) => handleDragStart(e, originalIndex)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, originalIndex)}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={(e) => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
-                isDragged={draggedIndex === originalIndex}
+                isDragged={draggedIndex === index}
+                dragOverClass={dragOverClass}
               />
             </React.Fragment>
           );
         })}
-        {filteredTasks.length === 0 && (
+        {orderedTasks.length === 0 && (
           <div className="empty-filter-state">
             No recent active tasks found.
           </div>
