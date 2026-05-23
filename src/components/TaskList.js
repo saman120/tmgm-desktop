@@ -1,5 +1,5 @@
 // src/components/TaskList.js
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import './TaskList.css';
@@ -16,10 +16,6 @@ const TaskList = ({
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [showRecent, setShowRecent] = useState(true);
-
-  if (tasks.length === 0) {
-    return <EmptyState onRefresh={onRefresh} />;
-  }
 
   const filteredTasks = showRecent 
     ? tasks.filter(task => {
@@ -59,6 +55,70 @@ const TaskList = ({
   };
 
   const orderedTasks = sortTasks(filteredTasks);
+
+  const hourlyStats = useMemo(() => {
+    const stats = {};
+    orderedTasks.forEach(task => {
+      if (task.status === 'completed' && task.updatedAt) {
+        const taskDate = new Date(task.updatedAt);
+        const groupKey = `${taskDate.toLocaleDateString()}-${taskDate.getHours()}`;
+        if (!stats[groupKey]) {
+          stats[groupKey] = { delayCount: 0, distractionCount: 0 };
+        }
+        stats[groupKey].delayCount += (task.delayCount || 0);
+        stats[groupKey].distractionCount += (task.distractionCount || 0);
+      }
+    });
+    return stats;
+  }, [orderedTasks]);const stats = useMemo(() => {
+    const daily = {};
+    const hourly = {};
+    
+    orderedTasks.forEach(task => {
+      if (task.status === 'completed' && task.updatedAt) {
+        const taskDate = new Date(task.updatedAt);
+        const dayKey = taskDate.toLocaleDateString();
+        const hourKey = `${dayKey}-${taskDate.getHours()}`;
+
+        if (!daily[dayKey]) daily[dayKey] = { delayCount: 0, distractionCount: 0 };
+        if (!hourly[hourKey]) hourly[hourKey] = { delayCount: 0, distractionCount: 0 };
+
+        const dC = task.delayCount || 0;
+        const distC = task.distractionCount || 0;
+
+        daily[dayKey].delayCount += dC;
+        daily[dayKey].distractionCount += distC;
+        
+        hourly[hourKey].delayCount += dC;
+        hourly[hourKey].distractionCount += distC;
+      }
+    });
+    return { daily, hourly };
+  }, [orderedTasks]);
+
+  if (tasks.length === 0) {
+    return <EmptyState onRefresh={onRefresh} />;
+  }
+
+  const getGroupStyle = (dC, distC) => {
+    let delayColor = 'rgba(235, 248, 235, 0.9)';
+    
+    if (dC < 1) delayColor = 'rgba(230, 210, 255, 0.9)'; 
+    else if (dC > 1 && dC <= 2) delayColor = 'rgba(255, 224, 224, 0.9)';
+    else if (dC > 2 && dC <= 5) delayColor = 'rgba(255, 180, 180, 0.9)';
+    else if (dC > 5 && dC <= 10) delayColor = 'rgba(255, 120, 120, 0.9)';
+    else if (dC > 10) delayColor = 'rgba(255, 70, 70, 0.9)';
+
+    let distColor = 'rgba(235, 248, 235, 0.9)';
+    if (distC > 1 && distC <= 5) distColor = 'rgba(255, 245, 180, 0.9)';
+    else if (distC > 5 && distC <= 10) distColor = 'rgba(255, 220, 120, 0.9)';
+    else if (distC > 10) distColor = 'rgba(255, 190, 70, 0.9)';
+
+    return { 
+      background: `linear-gradient(135deg, ${delayColor} 0%, ${distColor} 100%)`,
+      color: '#1d1d1f'
+    };
+  };
 
   const handleDragStart = (e, index) => {
     setDraggedIndex(index);
@@ -122,7 +182,8 @@ const TaskList = ({
     setDragOverIndex(null); // This safely closes the drop zone if the user lets go of the mouse outside the window
   };
 
-  let lastGroupKey = null;
+  let lastDayKey = null;
+  let lastHourKey = null;
 
   return (
     // REMOVED: onDragLeave listener from this container div
@@ -146,24 +207,45 @@ const TaskList = ({
 
       <div className="task-list">
         {orderedTasks.map((task, index) => {
-          let divider = null;
+          let dayDivider = null;
+          let hourDivider = null;
 
           if (task.status === 'completed' && task.updatedAt) {
             const taskDate = new Date(task.updatedAt);
-            const dayString = taskDate.toLocaleDateString();
+            const dayKey = taskDate.toLocaleDateString();
             const hour = taskDate.getHours();
-            const groupKey = `${dayString}-${hour}`;
+            const hourKey = `${dayKey}-${hour}`;
 
-            if (groupKey !== lastGroupKey) {
-              lastGroupKey = groupKey;
-              const displayDate = taskDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            // Check if we need a new Day Divider
+            if (dayKey !== lastDayKey) {
+              lastDayKey = dayKey;
+              const displayDate = taskDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+              
+              const dayStats = stats.daily[dayKey] || { delayCount: 0, distractionCount: 0 };
+              const dayStyle = getGroupStyle(dayStats.delayCount, dayStats.distractionCount);
+
+              dayDivider = (
+                <div className="time-divider day-divider" key={`day-${dayKey}`}>
+                  <span className="time-divider-text day-text" style={dayStyle}>
+                    {displayDate}
+                  </span>
+                </div>
+              );
+            }
+
+            // Check if we need a new Hour Divider
+            if (hourKey !== lastHourKey) {
+              lastHourKey = hourKey;
               const ampm = hour >= 12 ? 'PM' : 'AM';
               const displayHour = hour % 12 || 12;
+              
+              const hourStats = stats.hourly[hourKey] || { delayCount: 0, distractionCount: 0 };
+              const hourStyle = getGroupStyle(hourStats.delayCount, hourStats.distractionCount);
 
-              divider = (
-                <div className="time-divider" key={`divider-${groupKey}`}>
-                  <span className="time-divider-text">
-                    {displayDate} • {displayHour} {ampm}
+              hourDivider = (
+                <div className="time-divider hour-divider" key={`hour-${hourKey}`}>
+                  <span className="time-divider-text hour-text" style={hourStyle}>
+                    {displayHour} {ampm}
                   </span>
                 </div>
               );
@@ -177,7 +259,8 @@ const TaskList = ({
 
           return (
             <React.Fragment key={task._id}>
-              {divider}
+              {dayDivider}
+              {hourDivider}
               <TaskItem
                 task={task}
                 isFirst={index === 0 && task.status === 'in-progress'}

@@ -29,16 +29,15 @@
     border: 2px solid #007AFF;
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1), 0 8px 32px rgba(0, 122, 255, 0.2);
   }
-  
-  .task-item.completed {
-    opacity: 0.7;
-    background: rgba(248, 249, 250, 0.9);
-  }
-  
-  .task-item.completed .task-description {
-    text-decoration: line-through;
-    color: #8e8e93;
-  }
+
+.task-item.completed {
+  opacity: 0.95; 
+}
+
+.task-item.completed .task-description {
+  text-decoration: none; 
+  color: #1d1d1f;
+}
   
   .task-content {
     flex: 1;
@@ -314,7 +313,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  opacity: 0.5;
+  opacity: 0.2;
   padding: 2px 6px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 4px;
@@ -342,11 +341,6 @@
     border: 1px solid #000; 
     color: #000; 
   }
-}
-
-/* NEW: Remarks Modal Styles */
-.remarks-btn {
-  opacity: 0.6; /* Make it stand out slightly more than the default 0.1 opacity */
 }
 
 .remarks-modal-overlay {
