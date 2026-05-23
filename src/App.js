@@ -45,23 +45,23 @@ function App() {
     try {
       setError(null);
       const newTask = await taskAPI.createTask({ description, title: 'Example' });
-      await loadTasks(); // Reload to ensure proper sorting
+      setTasks(prevTasks => [...prevTasks, newTask]);
       return newTask;
     } catch (err) {
       console.error('Failed to create task:', err);
       setError('Failed to create task. Please try again.');
       throw err;
     }
-  }, [loadTasks]);
+  }, []);
 
   // Update existing task
   const updateTask = useCallback(async (taskId, updates) => {
     try {
       setError(null);
-      await taskAPI.updateTask(taskId, updates);
+      const updatedTask = await taskAPI.updateTask(taskId, updates);
 
       setTasks(prevTasks => prevTasks.map(task => 
-        task._id === taskId ? { ...task, ...updates } : task
+        task._id === taskId ? updatedTask : task
       ));
     } catch (err) {
       console.error('Failed to update task:', err);
@@ -106,6 +106,11 @@ function App() {
   };
 
   // Handle task description update
+  const handleTaskUpdate = async (taskId, update) => {
+    await updateTask(taskId, update);
+  };
+
+  // Handle task description update
   const handleDelete = async (taskId) => {
     await deleteTask(taskId);
   };
@@ -144,6 +149,7 @@ function App() {
             tasks={tasks}
             onStatusToggle={handleStatusToggle}
             onDescriptionUpdate={handleDescriptionUpdate}
+            onTaskUpdate={handleTaskUpdate}
             onDelete={handleDelete}
             onReorder={handleReorder}
           />

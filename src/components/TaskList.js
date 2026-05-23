@@ -10,7 +10,8 @@ const TaskList = ({
   onDescriptionUpdate, 
   onRefresh,
   onDelete,
-  onReorder 
+  onReorder,
+  onTaskUpdate
 }) => {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -184,6 +185,7 @@ const TaskList = ({
                 onDescriptionUpdate={onDescriptionUpdate}
                 onDelete={onDelete}
                 draggable={true}
+                onTaskUpdate={onTaskUpdate}
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={(e) => handleDrop(e, index)}

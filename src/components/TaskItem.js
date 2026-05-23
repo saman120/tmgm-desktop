@@ -8,13 +8,14 @@ const TaskItem = ({
   onStatusToggle, 
   onDescriptionUpdate,
   onDelete,
+  onTaskUpdate, // NEW: Prop to handle generic task field updates (like counts)
   draggable,
   onDragStart,
   onDragOver,
   onDrop,
   onDragEnd,
   isDragged,
-  dragOverClass // NEW
+  dragOverClass
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -38,15 +39,15 @@ const TaskItem = ({
 
   const handleEditSubmit = async () => {
     const trimmedValue = editValue.trim();
-    
     if (trimmedValue && trimmedValue !== task.description) {
       try {
         setIsLoading(true);
         await onDescriptionUpdate(task._id, trimmedValue);
-        setIsLoading(false);
       } catch (error) {
         console.error('Failed to update description:', error);
         setEditValue(task.description);
+      } finally {
+        setIsLoading(false);
       }
     } else {
       setEditValue(task.description);
@@ -72,9 +73,10 @@ const TaskItem = ({
     try {
       setIsLoading(true);
       await onStatusToggle(task._id, task.status, status);
-      setIsLoading(false);
     } catch (error) {
       console.error('Failed to toggle status:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -85,7 +87,32 @@ const TaskItem = ({
       setIsLoading(false);
       setConfirmDelete(false);
     } else setConfirmDelete(new Date().setSeconds(new Date().getSeconds()+5))
-  }
+  };
+
+  // NEW: Double-click Handlers for Counters
+  const handleIncrementDelay = async () => {
+    if (!onTaskUpdate) return;
+    try {
+      setIsLoading(true);
+      await onTaskUpdate(task._id, { delayCount: (task.delayCount || 0) + 1 });
+    } catch (error) {
+      console.error('Failed to increment delay:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleIncrementDistraction = async () => {
+    if (!onTaskUpdate) return;
+    try {
+      setIsLoading(true);
+      await onTaskUpdate(task._id, { distractionCount: (task.distractionCount || 0) + 1 });
+    } catch (error) {
+      console.error('Failed to increment distraction:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -96,9 +123,8 @@ const TaskItem = ({
 
   return (
     <div 
-      // NEW: Added the dragOverClass to the template literal below
       className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} ${dragOverClass || ''} fade-in`}
-      draggable={task.status !=='completed'}
+      draggable={task.status !== 'completed'}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
@@ -116,7 +142,7 @@ const TaskItem = ({
       </div>
       
       <div className="task-actions">
-      {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
+        {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
         {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{getStatusIcon(task.status)}</div>}
       </div>
       
@@ -147,8 +173,25 @@ const TaskItem = ({
       
       <div className="task-actions">
         {!isLoading && <>
+          {/* NEW: Counter Buttons */}
+          <button 
+            className="count-button" 
+            title="Double-click to increment Delays" 
+            onDoubleClick={handleIncrementDelay}
+          >
+            <span className="status-icon">⏳</span> {task.delayCount || 0}
+          </button>
+          
+          <button 
+            className="count-button" 
+            title="Double-click to increment Distractions" 
+            onDoubleClick={handleIncrementDistraction}
+          >
+            <span className="status-icon">📱</span> {task.distractionCount || 0}
+          </button>
+
           <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
-          <span className="status-icon">⌛ </span>
+            <span className="status-icon">⌛ </span>
           </button>
           <button className='delete-button' title={`Hold task`} onClick={() => handleStatusClick('hold')}>
             <span className="status-icon">🚫 </span>
