@@ -8,7 +8,7 @@ const TaskItem = ({
   onStatusToggle, 
   onDescriptionUpdate,
   onDelete,
-  onTaskUpdate, // NEW: Prop to handle generic task field updates (like counts)
+  onTaskUpdate, 
   draggable,
   onDragStart,
   onDragOver,
@@ -21,6 +21,12 @@ const TaskItem = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.description);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  
+  // State for Remarks Modal
+  const [showRemarksModal, setShowRemarksModal] = useState(false);
+  const [currentRemarks, setCurrentRemarks] = useState(task.remarks || []);
+  const [newRemarkText, setNewRemarkText] = useState('');
+
   const editRef = useRef(null);
 
   useEffect(() => {
@@ -29,6 +35,23 @@ const TaskItem = ({
       editRef.current.select();
     }
   }, [isEditing]);
+
+  // NEW: Global listener to close the remarks modal on "Escape"
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === 'Escape' && showRemarksModal) {
+        setShowRemarksModal(false);
+      }
+    };
+
+    if (showRemarksModal) {
+      document.addEventListener('keydown', handleGlobalKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [showRemarksModal]);
 
   const handleDoubleClick = () => {
     if (!isEditing) {
@@ -89,7 +112,6 @@ const TaskItem = ({
     } else setConfirmDelete(new Date().setSeconds(new Date().getSeconds()+5))
   };
 
-  // NEW: Double-click Handlers for Counters
   const handleIncrementDelay = async () => {
     if (!onTaskUpdate) return;
     try {
@@ -114,6 +136,50 @@ const TaskItem = ({
     }
   };
 
+  // --- REMARKS LOGIC ---
+  const openRemarksModal = () => {
+    setCurrentRemarks(task.remarks || []);
+    setNewRemarkText('');
+    setShowRemarksModal(true);
+  };
+
+  const addRemarkToList = (text) => {
+    const trimmed = text.trim();
+    if (!trimmed || currentRemarks.includes(trimmed)) return;
+    setCurrentRemarks([...currentRemarks, trimmed]);
+    setNewRemarkText('');
+  };
+
+  const handleAddRemark = (e) => {
+    if (e) e.preventDefault();
+    addRemarkToList(newRemarkText);
+  };
+
+  const handleRemoveRemark = (indexToRemove) => {
+    setCurrentRemarks(currentRemarks.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleSaveRemarks = async () => {
+    if (!onTaskUpdate) return;
+    
+    let updates = { remarks: currentRemarks };
+    const currentDistractionCount = task.distractionCount || 0;
+    
+    if (currentRemarks.length > currentDistractionCount) {
+      updates.distractionCount = currentRemarks.length;
+    }
+
+    try {
+      setIsLoading(true);
+      await onTaskUpdate(task._id, updates);
+      setShowRemarksModal(false);
+    } catch (error) {
+      console.error('Failed to save remarks:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'completed': return '✔';
@@ -122,77 +188,140 @@ const TaskItem = ({
   };
 
   return (
-    <div 
-      className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} ${dragOverClass || ''} fade-in`}
-      draggable={task.status !== 'completed'}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-    >
-      <div className="drag-handle" title="Drag to reorder">
-        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="9" cy="5" r="1"></circle>
-          <circle cx="9" cy="12" r="1"></circle>
-          <circle cx="9" cy="19" r="1"></circle>
-          <circle cx="15" cy="5" r="1"></circle>
-          <circle cx="15" cy="12" r="1"></circle>
-          <circle cx="15" cy="19" r="1"></circle>
-        </svg>
-      </div>
-      
-      <div className="task-actions">
-        {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
-        {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{getStatusIcon(task.status)}</div>}
-      </div>
-      
-      <div className="task-content">
-        <div className="task-description-container">
-          {isEditing ? (
-            <input
-              ref={editRef}
-              type="text"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={handleEditSubmit}
-              onKeyDown={handleKeyDown}
-              className="task-description-edit"
-              maxLength={200}
-            />
-          ) : (
-            <div
-              className="task-description"
-              onDoubleClick={handleDoubleClick}
-              title="Double-click to edit"
+    <>
+      <div 
+        className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} ${dragOverClass || ''} fade-in`}
+        draggable={task.status !== 'completed'}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
+      >
+        <div className="drag-handle" title="Drag to reorder">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="9" cy="5" r="1"></circle>
+            <circle cx="9" cy="12" r="1"></circle>
+            <circle cx="9" cy="19" r="1"></circle>
+            <circle cx="15" cy="5" r="1"></circle>
+            <circle cx="15" cy="12" r="1"></circle>
+            <circle cx="15" cy="19" r="1"></circle>
+          </svg>
+        </div>
+        
+        <div className="task-actions">
+          {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
+          {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{getStatusIcon(task.status)}</div>}
+        </div>
+        
+        <div className="task-content">
+          <div className="task-description-container">
+            {isEditing ? (
+              <input
+                ref={editRef}
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={handleEditSubmit}
+                onKeyDown={handleKeyDown}
+                className="task-description-edit"
+                maxLength={200}
+              />
+            ) : (
+              <div
+                className="task-description"
+                onDoubleClick={handleDoubleClick}
+                title="Double-click to edit"
+              >
+                {task.description}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="task-actions-right">
+          {!isLoading && <>
+            <button 
+              className="count-button remarks-btn" 
+              title="Double-click to View/Add Remarks" 
+              onDoubleClick={openRemarksModal}
             >
-              {task.description}
-            </div>
-          )}
+              <span className="status-icon">💬</span> {task.remarks?.length || 0}
+            </button>
+
+            <button 
+              className="count-button" 
+              title="Double-click to increment Distractions" 
+              onDoubleClick={handleIncrementDistraction}
+            >
+              <span className="status-icon">😵</span> {task.distractionCount || 0}
+            </button>
+
+            <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
+              <span className="status-icon">⌛ </span>
+            </button>
+            <button className='delete-button' title={`Hold task`} onClick={() => handleStatusClick('hold')}>
+              <span className="status-icon">🚫 </span>
+            </button>
+            <button className='delete-button' onClick={handleDeleteClick} title="Delete task (click twice within 5 seconds to confirm)">
+              <span className="status-icon">❌ </span>
+            </button>
+          </>}
         </div>
       </div>
-      
-      <div className="task-actions">
-        {!isLoading && <>
-          <button 
-            className="count-button" 
-            title="Double-click to increment Distractions" 
-            onDoubleClick={handleIncrementDistraction}
-          >
-            <span className="status-icon">😵</span> {task.distractionCount || 0}
-          </button>
 
-          <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
-            <span className="status-icon">⌛ </span>
-          </button>
-          <button className='delete-button' title={`Hold task`} onClick={() => handleStatusClick('hold')}>
-            <span className="status-icon">🚫 </span>
-          </button>
-          <button className='delete-button' onClick={handleDeleteClick} title="Delete task (click twice within 5 seconds to confirm)">
-            <span className="status-icon">❌ </span>
-          </button>
-        </>}
-      </div>
-    </div>
+      {/* Remarks Modal Overlay */}
+      {showRemarksModal && (
+        <div className="remarks-modal-overlay" onClick={() => setShowRemarksModal(false)}>
+          <div className="remarks-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Task Remarks</h3>
+            
+            <div className="remarks-list">
+              {currentRemarks.length === 0 ? (
+                <p className="no-remarks">No remarks yet. Add one below!</p>
+              ) : (
+                currentRemarks.map((rem, idx) => (
+                  <div key={idx} className="remark-item">
+                    <span>• {rem}</span>
+                    <button 
+                      className="remove-remark-btn" 
+                      onClick={() => handleRemoveRemark(idx)}
+                      title="Remove this remark"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <form className="remark-input-container" onSubmit={handleAddRemark}>
+              <textarea 
+                placeholder="Type a new remark... (Press Enter to add)" 
+                value={newRemarkText}
+                onChange={(e) => setNewRemarkText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setShowRemarksModal(false); // Also close if they press Escape while typing
+                  } else if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddRemark();
+                  }
+                }}
+                autoFocus
+                className="remark-textarea"
+                rows={2}
+              />
+              <button type="submit" disabled={!newRemarkText.trim()}>Add</button>
+            </form>
+
+            <div className="remarks-modal-actions">
+              <button className="cancel-btn" onClick={() => setShowRemarksModal(false)}>Cancel</button>
+              <button className="save-btn" onClick={handleSaveRemarks}>Save & Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

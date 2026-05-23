@@ -1,5 +1,6 @@
 /* src/components/TaskItem.css */
 .task-item {
+    position: relative;
     display: flex;
     align-items: flex-start;
     gap: 4px;
@@ -110,11 +111,22 @@
   }
   
   .task-actions {
-    flex-shrink: 0;
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 4px;
+  }
+
+  .task-actions-right {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    z-index: 10;
+    opacity: 1;
   }
   
   .status-button {
@@ -302,7 +314,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  opacity: 0.1;
+  opacity: 0.5;
   padding: 2px 6px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 4px;
@@ -329,5 +341,213 @@
   .count-button { 
     border: 1px solid #000; 
     color: #000; 
+  }
+}
+
+/* NEW: Remarks Modal Styles */
+.remarks-btn {
+  opacity: 0.6; /* Make it stand out slightly more than the default 0.1 opacity */
+}
+
+.remarks-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remarks-modal {
+  background: white;
+  width: 90%;
+  max-width: 380px;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  cursor: default;
+}
+
+.remarks-modal h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #1d1d1f;
+}
+
+.remarks-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.no-remarks {
+  font-size: 13px;
+  color: #8e8e93;
+  font-style: italic;
+  margin: 0;
+}
+
+.remark-item {
+  background: #f5f5f7;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1d1d1f;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.remark-input-container {
+  display: flex;
+  gap: 8px;
+}
+
+.remark-input-container input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #c7c7cc;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+}
+
+.remark-input-container input:focus {
+  border-color: #007AFF;
+}
+
+.remark-input-container button {
+  padding: 0 16px;
+  background: #f5f5f7;
+  border: 1px solid #c7c7cc;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d1d1f;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remark-input-container button:not(:disabled):hover {
+  background: #e5e5ea;
+}
+
+.remark-input-container button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remarks-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.remarks-modal-actions button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.remarks-modal-actions .cancel-btn {
+  background: transparent;
+  color: #8e8e93;
+}
+
+.remarks-modal-actions .cancel-btn:hover {
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+
+.remarks-modal-actions .save-btn {
+  background: #007AFF;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.remarks-modal-actions .save-btn:hover {
+  background: #0056D6;
+}
+
+@media (prefers-contrast: high) {
+  .remarks-modal {
+    border: 2px solid #000;
+  }
+  .remark-item, .remark-input-container input {
+    border: 1px solid #000;
+  }
+  .remarks-modal-actions .save-btn {
+    background: #000;
+    color: #fff;
+  }
+}
+
+/* Update existing remark-item to handle the new delete button */
+.remark-item {
+  background: #f5f5f7;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1d1d1f;
+  line-height: 1.4;
+  word-wrap: break-word;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.remark-item span {
+  flex: 1;
+}
+
+.remove-remark-btn {
+  background: none;
+  border: none;
+  color: #ff3b30;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 0 4px;
+  transition: opacity 0.2s ease;
+}
+
+.remove-remark-btn:hover {
+  opacity: 1;
+}
+
+/* NEW: Textarea Styles */
+.remark-textarea {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #c7c7cc;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 40px;
+  max-height: 120px;
+}
+
+.remark-textarea:focus {
+  border-color: #007AFF;
+}
+
+@media (prefers-contrast: high) {
+  .remark-textarea, .suggestion-pill {
+    border: 1px solid #000;
   }
 }
