@@ -213,8 +213,7 @@ const TaskItem = ({
     
     // Purple for 0 delays
     if (dC < 1) delayColor = 'rgba(247, 227, 250, 0.9)'; 
-    else if (dC > 1 && dC <= 2) delayColor = 'rgba(255, 224, 224, 0.9)'; // slight red
-    else if (dC > 2 && dC <= 5) delayColor = 'rgba(255, 180, 180, 0.9)'; // more red
+    else if (dC >= 2 && dC <= 5) delayColor = 'rgba(255, 180, 180, 0.9)'; // more red
     else if (dC > 5 && dC <= 10) delayColor = 'rgba(255, 120, 120, 0.9)'; // critical red
     else if (dC > 10) delayColor = 'rgba(255, 70, 70, 0.9)'; // bad red
 
