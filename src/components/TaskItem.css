@@ -326,6 +326,10 @@
   user-select: none; /* Prevents text highlighting on double-click */
 }
 
+.count-button-highlight {
+  opacity: 0.8;
+}
+
 .count-button:hover {
   background: rgba(0, 0, 0, 0.05);
   color: #1d1d1f;
