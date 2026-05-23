@@ -173,21 +173,12 @@ const TaskItem = ({
       
       <div className="task-actions">
         {!isLoading && <>
-          {/* NEW: Counter Buttons */}
-          <button 
-            className="count-button" 
-            title="Double-click to increment Delays" 
-            onDoubleClick={handleIncrementDelay}
-          >
-            <span className="status-icon">⏳</span> {task.delayCount || 0}
-          </button>
-          
           <button 
             className="count-button" 
             title="Double-click to increment Distractions" 
             onDoubleClick={handleIncrementDistraction}
           >
-            <span className="status-icon">📱</span> {task.distractionCount || 0}
+            <span className="status-icon">😵</span> {task.distractionCount || 0}
           </button>
 
           <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
