@@ -14,24 +14,37 @@ function App() {
   const [error, setError] = useState(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
 
+  const sortTasks = (tasks) => {
+      // Sort tasks: in-progress first, then pending, then completed, all by created_at desc
+      const sortedTasks = tasks.sort((a, b) => {
+        const statusOrder = { 'in-progress': 0, 'pending': 1, 'hold': 2, 'completed': 3 };
+        const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+        
+        if (statusDiff !== 0) return statusDiff;
+
+        if(a.status === 'completed') 
+          return new Date(b.updatedAt || b.createdAt) -  new Date(a.updatedAt || a.createdAt);
+
+        const orderA = a.order !== undefined ? a.order : 0;
+        const orderB = b.order !== undefined ? b.order : 0;
+  
+        if (orderA !== orderB) {
+          return orderA - orderB; 
+        }
+        
+        return new Date(a.updatedAt || a.createdAt) - new Date(b.updatedAt || b.createdAt);
+      });
+
+      setTasks(sortedTasks);
+  }
+
   // Load tasks from API
   const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const fetchedTasks = await taskAPI.getAllTasks();
-      
-      // Sort tasks: in-progress first, then pending, then completed, all by created_at desc
-      const sortedTasks = fetchedTasks.sort((a, b) => {
-        const statusOrder = { 'in-progress': 0, 'pending': 1, 'hold': 2, 'completed': 3 };
-        const statusDiff = statusOrder[a.status] - statusOrder[b.status];
-        
-        if (statusDiff !== 0) return statusDiff;
-        
-        return new Date(b.created_at || b.createdAt) -  new Date(a.created_at || a.createdAt);
-      });
-      
-      setTasks(sortedTasks);
+      sortTasks(fetchedTasks);
     } catch (err) {
       console.error('Failed to load tasks:', err);
       setError('Failed to load tasks. Please check your connection.');
@@ -45,14 +58,14 @@ function App() {
     try {
       setError(null);
       const newTask = await taskAPI.createTask({ description, title: 'Example' });
-      setTasks(prevTasks => [...prevTasks, newTask]);
-      return newTask;
+      
+      sortTasks([...tasks, newTask]);
     } catch (err) {
       console.error('Failed to create task:', err);
       setError('Failed to create task. Please try again.');
       throw err;
     }
-  }, []);
+  }, [tasks]);
 
   // Update existing task
   const updateTask = useCallback(async (taskId, updates) => {
@@ -60,7 +73,7 @@ function App() {
       setError(null);
       const updatedTask = await taskAPI.updateTask(taskId, updates);
 
-      setTasks(prevTasks => prevTasks.map(task => 
+      sortTasks(tasks.map(task => 
         task._id === taskId ? updatedTask : task
       ));
     } catch (err) {
@@ -68,20 +81,20 @@ function App() {
       setError('Failed to update task. Please try again.');
       throw err;
     }
-  }, []);
+  }, [tasks]);
 
   // Update existing task
   const deleteTask = useCallback(async (taskId) => {
     try {
       setError(null);
       await taskAPI.deleteTask(taskId);
-      setTasks(ts => ts.filter(t => t._id !== taskId)); // Reload to ensure proper sorting
+      sortTasks(tasks.filter(t => t._id !== taskId)); // Reload to ensure proper sorting
     } catch (err) {
       console.error('Failed to delete task:', err);
       setError('Failed to delete task. Please try again.');
       throw err;
     }
-  }, []);
+  }, [tasks]);
 
   // Load tasks on component mount
   useEffect(() => {

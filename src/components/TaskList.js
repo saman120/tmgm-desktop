@@ -54,7 +54,8 @@ const TaskList = ({
     });
   };
 
-  const orderedTasks = sortTasks(filteredTasks);
+  const orderedTasks = filteredTasks;
+  console.log('Ordered Tasks:', orderedTasks);
 
   const stats = useMemo(() => {
     const daily = {};
