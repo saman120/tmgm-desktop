@@ -213,3 +213,34 @@
       background: #008000;
     }
   }
+/* NEW: Drag and Drop Styles */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  color: #8e8e93; /* Soft gray color for the icon */
+  cursor: grab;
+  user-select: none;
+  opacity: 0.3;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  height: 100%;
+  margin-top: 2px; /* Aligns visually with the text/status icon */
+}
+
+.task-item:hover .drag-handle {
+  opacity: 1;
+  color: #1d1d1f; /* Darkens on hover to show it's interactive */
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.task-item.dragging {
+  opacity: 0.4;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: none;
+  transform: scale(0.98);
+  border: 1px dashed #007AFF;
+}

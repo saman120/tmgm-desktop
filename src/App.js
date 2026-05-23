@@ -41,7 +41,7 @@ function App() {
   }, []);
 
   // Create new task
-  const createTask = async (description) => {
+  const createTask = useCallback(async (description) => {
     try {
       setError(null);
       const newTask = await taskAPI.createTask({ description, title: 'Example' });
@@ -52,114 +52,36 @@ function App() {
       setError('Failed to create task. Please try again.');
       throw err;
     }
-  };
+  }, [loadTasks]);
 
   // Update existing task
-  const updateTask = async (taskId, updates) => {
+  const updateTask = useCallback(async (taskId, updates) => {
     try {
-      setLoading(true);
       setError(null);
       await taskAPI.updateTask(taskId, updates);
-      await loadTasks(); // Reload to ensure proper sorting
+
+      setTasks(prevTasks => prevTasks.map(task => 
+        task._id === taskId ? { ...task, ...updates } : task
+      ));
     } catch (err) {
       console.error('Failed to update task:', err);
       setError('Failed to update task. Please try again.');
       throw err;
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
   // Update existing task
-  const deleteTask = async (taskId) => {
+  const deleteTask = useCallback(async (taskId) => {
     try {
       setError(null);
       await taskAPI.deleteTask(taskId);
-      setTasks(ts=>ts.filter(t=> t._id !== taskId)); // Reload to ensure proper sorting
+      setTasks(ts => ts.filter(t => t._id !== taskId)); // Reload to ensure proper sorting
     } catch (err) {
-      console.error('Failed to update task:', err);
-      setError('Failed to update task. Please try again.');
+      console.error('Failed to delete task:', err);
+      setError('Failed to delete task. Please try again.');
       throw err;
-    } finally {
     }
-  };
-
-  // Complete current task and start next
-  const completeCurrentTask = useCallback(async () => {
-    const inProgressTasks = tasks.filter(task => task.status === 'in-progress');
-    const pendingTasks = tasks.filter(task => task.status === 'pending');
-
-    if (inProgressTasks.length > 0) {
-      const currentTask = inProgressTasks[0];
-      
-      try {
-        // Complete the current task
-        await updateTask(currentTask._id, { status: 'completed' });
-        
-        // Set the next pending task to in-progress
-        if (pendingTasks.length > 0) {
-          const nextTask = pendingTasks[0];
-          await updateTask(nextTask._id, { status: 'in-progress' });
-        }
-        
-        // Focus the window after completing task
-        if (window.electronAPI) {
-          await window.electronAPI.focusWindow();
-        }
-      } catch (err) {
-        console.error('Failed to complete current task:', err);
-        setError('Failed to complete current task.');
-      }
-    }
-  }, [tasks, updateTask]);
-
-  // Setup Electron event listeners
-  useEffect(() => {
-    console.log('notification:use effect')
-    if (!window.electronAPI) return;
-
-    const cleanup = [];
-
-    // Listen for complete current task events
-    cleanup.push(window.electronAPI.onCompleteCurrentTask(completeCurrentTask));
-
-    // Listen for notification check events
-    cleanup.push(window.electronAPI.onCheckInProgressTask(async () => {
-      console.log('notification: in progess task check')
-      const inProgressTask = tasks.find(task => task.status === 'in-progress');
-      const nextTask = new Date().getMinutes() < 2 ? "Rest": new Date().getMinutes() < 7 ? 'Prepare' : new Date().getMinutes() < 54 ? 'Work': 'Rest';
-      const title = new Date().getMinutes() < 12 ? "Rest": new Date().getMinutes() < 17 ? 'Prepare' : 'Work';
-      
-      if (title !== 'Rest' && title !== 'Prepare') inProgressTask.timeSlot = (inProgressTask.timeSlot || 0)+1;
-
-      await window.electronAPI.showNotification({
-        title: title === nextTask ? title : `${title} >> ${nextTask}`,
-        body: `${inProgressTask.timeSlot ? (inProgressTask.timeSlot+1)+ '*': ''} ${inProgressTask.description.substring(0, 50)}${inProgressTask.description.length > 50 ? '...' : ''}`,
-        silent: false
-      });
-      if(title !== 'Rest' && title !== 'Prepare'){
-        await updateTask(inProgressTask._id, { timeSlot: inProgressTask.timeSlot  });
-        setTasks(tasks);
-      }
-    }));
-
-    // Listen for notification clicks
-    cleanup.push(window.electronAPI.onNotificationClicked(completeCurrentTask));
-
-    // Listen for add task triggers from dock/tray
-    cleanup.push(window.electronAPI.onTriggerAddTask(() => {
-      setIsAddingTask(true);
-    }));
-
-    // Cleanup function
-    return () => {
-      cleanup.forEach(cleanupFn => {
-        if (typeof cleanupFn === 'function') {
-          cleanupFn();
-        }
-      });
-    };
-  }, [completeCurrentTask, tasks]);
+  }, []);
 
   // Load tasks on component mount
   useEffect(() => {
@@ -187,6 +109,14 @@ function App() {
   const handleDelete = async (taskId) => {
     await deleteTask(taskId);
   };
+  
+  const handleReorder = async (sourceIndex, destinationIndex) => {
+    const updatedTasks = Array.from(tasks);
+    const [movedTask] = updatedTasks.splice(sourceIndex, 1);
+    updatedTasks.splice(destinationIndex, 0, movedTask);
+    
+    setTasks(updatedTasks);
+  };
 
   // Clear error message
   const clearError = () => setError(null);
@@ -211,6 +141,7 @@ function App() {
             onStatusToggle={handleStatusToggle}
             onDescriptionUpdate={handleDescriptionUpdate}
             onDelete={handleDelete}
+            onReorder={handleReorder}
           />
         )}
       </main>

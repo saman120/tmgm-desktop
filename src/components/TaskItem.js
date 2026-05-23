@@ -1,6 +1,5 @@
 // src/components/TaskItem.js
 import React, { useState, useRef, useEffect } from 'react';
-import { formatDistanceToNow } from '../utils/dateUtils';
 import './TaskItem.css';
 
 const TaskItem = ({ 
@@ -8,11 +7,18 @@ const TaskItem = ({
   isFirst, 
   onStatusToggle, 
   onDescriptionUpdate,
-  onDelete
+  onDelete,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  isDragged
 }) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.description);
-  const [confirmDelete, setConfirmDelte] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const editRef = useRef(null);
 
   useEffect(() => {
@@ -34,15 +40,16 @@ const TaskItem = ({
     
     if (trimmedValue && trimmedValue !== task.description) {
       try {
+        setIsLoading(true);
         await onDescriptionUpdate(task._id, trimmedValue);
+        setIsLoading(false);
       } catch (error) {
         console.error('Failed to update description:', error);
-        setEditValue(task.description); // Revert on error
+        setEditValue(task.description);
       }
     } else {
-      setEditValue(task.description); // Revert if empty or unchanged
+      setEditValue(task.description);
     }
-    
     setIsEditing(false);
   };
 
@@ -62,7 +69,9 @@ const TaskItem = ({
 
   const handleStatusClick = async (status) => {
     try {
+      setIsLoading(true);
       await onStatusToggle(task._id, task.status, status);
+      setIsLoading(false);
     } catch (error) {
       console.error('Failed to toggle status:', error);
     }
@@ -70,38 +79,45 @@ const TaskItem = ({
 
   const handleDeleteClick = async () => {
     if (confirmDelete && confirmDelete > new Date()) {
-       await onDelete(task._id); 
-       setConfirmDelte(false);
-     } else setConfirmDelte(new Date().setSeconds(new Date().getSeconds()+5))
+      setIsLoading(true);
+      await onDelete(task._id); 
+      setIsLoading(false);
+      setConfirmDelete(false);
+    } else setConfirmDelete(new Date().setSeconds(new Date().getSeconds()+5))
   }
-
-  const getStatusButtonText = (status) => {
-    const statusTexts = {
-      'pending': 'Start',
-      'in-progress': 'Complete',
-      'completed': 'Restart'
-    };
-    return statusTexts[status] || 'Update';
-  };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'pending':
-        return '';
-      case 'in-progress':
-        return '';
-      case 'completed':
-        return '✔';
-      default:
-        return '';
+      case 'completed': return '✔';
+      default: return '';
     }
   };
 
   return (
-    <div className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} fade-in`}>
-    <div className="task-actions">
-    <div className={`status-indicator ${task.status}`} onClick={()=>handleStatusClick()}>{getStatusIcon(task.status)}</div>
-    </div>
+    <div 
+      className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} fade-in`}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
+      {/* SVG Drag Handle on the far left */}
+      <div className="drag-handle" title="Drag to reorder">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="5" r="1"></circle>
+          <circle cx="9" cy="12" r="1"></circle>
+          <circle cx="9" cy="19" r="1"></circle>
+          <circle cx="15" cy="5" r="1"></circle>
+          <circle cx="15" cy="12" r="1"></circle>
+          <circle cx="15" cy="19" r="1"></circle>
+        </svg>
+      </div>
+      
+      <div className="task-actions">
+        <div className={`status-indicator ${task.status}`} onClick={() => handleStatusClick()}>{getStatusIcon(task.status)}</div>
+      </div>
+      
       <div className="task-content">
         <div className="task-description-container">
           {isEditing ? (
@@ -126,29 +142,21 @@ const TaskItem = ({
           )}
         </div>
       </div>
+      
       <div className="task-actions">
-      <button
-      className='delete-button'
-        title={`Delete task`}
-        onClick={handleDeleteClick}
-      >
-        <span className="status-icon">❌ </span>
-      </button>
-      <button
-      className='delete-button'
-        title={`Delete task`}
-        onClick={()=>handleStatusClick('hold')}
-      >
-        <span className="status-icon">🚫 </span>
-      </button>
-      <button
-      className='delete-button'
-        title={`Delete task`}
-        onClick={()=>handleStatusClick('pending')}
-      >
-        <span className="status-icon">⌛ </span>
-      </button>
-    </div>
+        {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
+        {!isLoading && <>
+          <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
+          <span className="status-icon">⌛ </span>
+          </button>
+          <button className='delete-button' title={`Hold task`} onClick={() => handleStatusClick('hold')}>
+            <span className="status-icon">🚫 </span>
+          </button>
+          <button className='delete-button' onClick={handleDeleteClick} title="Delete task (click twice within 5 seconds to confirm)">
+            <span className="status-icon">❌ </span>
+          </button>
+        </>}
+      </div>
     </div>
   );
 };

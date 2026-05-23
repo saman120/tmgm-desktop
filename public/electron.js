@@ -43,8 +43,8 @@ function createWindow() {
         mainWindow.show();
         
         // Setup notification timer after window is ready
-        console.log("notification timer: call");
-        setupNotificationTimer();
+        // console.log("notification timer: call");
+        // setupNotificationTimer();
     });
 
     // Handle window closed
