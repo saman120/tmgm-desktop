@@ -26,6 +26,8 @@ const TaskItem = ({
   const [showRemarksModal, setShowRemarksModal] = useState(false);
   const [currentRemarks, setCurrentRemarks] = useState(task.remarks || []);
   const [newRemarkText, setNewRemarkText] = useState('');
+  // Add this inside your TaskItem component, right after your other state declarations:
+  const [elapsedMinutes, setElapsedMinutes] = useState(0);
 
   const editRef = useRef(null);
 
@@ -112,17 +114,31 @@ const TaskItem = ({
     } else setConfirmDelete(new Date().setSeconds(new Date().getSeconds()+5))
   };
 
-  const handleIncrementDelay = async () => {
-    if (!onTaskUpdate) return;
-    try {
-      setIsLoading(true);
-      await onTaskUpdate(task._id, { delayCount: (task.delayCount || 0) + 1 });
-    } catch (error) {
-      console.error('Failed to increment delay:', error);
-    } finally {
-      setIsLoading(false);
+  // NEW: Live timer for in-progress tasks
+  useEffect(() => {
+    let intervalId;
+
+    const calculateElapsed = () => {
+      // Assuming 'updatedAt' is updated when status changes. Fallback to createdAt if needed.
+      const timestamp = task.inProgressAt || task.updatedAt || task.createdAt; 
+      if (task.status === 'in-progress' && timestamp) {
+        const startTime = new Date(timestamp).getTime();
+        const now = Date.now();
+        const diffMs = now - startTime;
+        const mins = Math.floor(diffMs / 60000); // Convert milliseconds to minutes
+        setElapsedMinutes(mins > 0 ? mins : 0);
+      }
+    };
+
+    if (task.status === 'in-progress') {
+      calculateElapsed(); // Run immediately
+      intervalId = setInterval(calculateElapsed, 30000); // Check every 30 seconds
     }
-  };
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [task.status]);
 
   const handleIncrementDistraction = async () => {
     if (!onTaskUpdate) return;
@@ -180,8 +196,8 @@ const TaskItem = ({
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
+  const getStatusIcon = (task) => {
+    switch (task.status) {
       case 'completed': return '✔';
       default: return '';
     }
@@ -237,7 +253,7 @@ const TaskItem = ({
         
         <div className="task-actions">
           {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
-          {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{getStatusIcon(task.status)}</div>}
+          {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{elapsedMinutes || getStatusIcon(task)}</div>}
         </div>
         
         <div className="task-content">
