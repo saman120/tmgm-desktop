@@ -32,28 +32,6 @@ const TaskList = ({
       })
     : tasks;
 
-  const sortTasks = (tasksToSort) => {
-    const statusOrder = ['in-progress', 'pending', 'hold', 'completed'];
-
-    return [...tasksToSort].sort((a, b) => {
-      const statusA = statusOrder.indexOf(a.status || 'unknown');
-      const statusB = statusOrder.indexOf(b.status || 'unknown');
-
-      if (statusA !== statusB) {
-        return statusA - statusB;
-      }
-
-      const orderA = a.order !== undefined ? a.order : 0;
-      const orderB = b.order !== undefined ? b.order : 0;
-
-      if (orderA !== orderB) {
-        return orderA - orderB; 
-      }
-
-      return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-    });
-  };
-
   const orderedTasks = filteredTasks;
   console.log('Ordered Tasks:', orderedTasks);
 
@@ -152,9 +130,9 @@ const TaskList = ({
 
     let newOrder;
     if (!prevTask) {
-      newOrder = (nextTask?.order || 0) - 1;
+      newOrder = (nextTask?.order || 0) - 1024;
     } else if (!nextTask) {
-      newOrder = (prevTask?.order || 0) + 1;
+      newOrder = (prevTask?.order || 0) + 1024;
     } else {
       newOrder = (prevTask.order + nextTask.order) / 2;
     }

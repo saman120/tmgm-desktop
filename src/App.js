@@ -129,15 +129,17 @@ function App() {
   };
 
   const handleReorder = async (taskId, newOrder) => {
-    // 1. Optimistically update the UI instantly
-    setTasks(tasks => 
-      tasks.map(task => 
-        task._id === taskId 
-          ? { ...task, order: newOrder } 
-          : task
-      )
-    );
     await updateTask(taskId, { order: newOrder });
+    console.log('Reordered task', (tasks.map(task => 
+      task._id === taskId 
+        ? { ...task, order: newOrder } 
+        : task
+    )));
+    sortTasks(tasks.map(task => 
+      task._id === taskId 
+        ? { ...task, order: newOrder } 
+        : task
+    ));
   }
 
   // Clear error message
