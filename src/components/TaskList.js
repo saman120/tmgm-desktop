@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import './TaskList.css';
+import { RefreshCw } from 'lucide-react';
 
 const TaskList = ({ 
   tasks, 
@@ -166,6 +167,13 @@ const TaskList = ({
             onClick={() => setShowRecent(false)}
           >
             All Tasks
+          </button>
+          <button 
+            className="refresh-button"
+            onClick={onRefresh}
+            title="Refresh tasks"
+          >
+            <RefreshCw size={16} />
           </button>
         </div>
       </div>

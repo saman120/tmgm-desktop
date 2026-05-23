@@ -167,6 +167,7 @@ function App() {
             onTaskUpdate={handleTaskUpdate}
             onDelete={handleDelete}
             onReorder={handleReorder}
+            onRefresh={loadTasks}
           />
         )}
       </main>
