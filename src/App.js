@@ -23,7 +23,7 @@ function App() {
       
       // Sort tasks: in-progress first, then pending, then completed, all by created_at desc
       const sortedTasks = fetchedTasks.sort((a, b) => {
-        const statusOrder = { 'in-progress': 0, 'pending': 1, 'completed': 2, 'hold': 3 };
+        const statusOrder = { 'in-progress': 0, 'pending': 1, 'hold': 2, 'completed': 3 };
         const statusDiff = statusOrder[a.status] - statusOrder[b.status];
         
         if (statusDiff !== 0) return statusDiff;

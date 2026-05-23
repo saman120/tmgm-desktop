@@ -32,3 +32,58 @@
     color: #000;
   }
 }
+
+/* NEW: Toggle Switch Styles */
+.toggle-container {
+  display: flex;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  padding: 3px;
+  margin: 0 auto; /* Centers the toggle if header uses flex */
+}
+
+.toggle-btn {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b6bec;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn:hover:not(.active) {
+  color: #1d1d1f;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.toggle-btn.active {
+  background: white;
+  color: #1d1d1f;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Fallback message when filter leaves list empty */
+.empty-filter-state {
+  text-align: center;
+  padding: 32px 20px;
+  color: #8e8e93;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Ensure Toggle behaves in high-contrast mode */
+@media (prefers-contrast: high) {
+  .toggle-container {
+    border: 1px solid #000;
+    background: transparent;
+  }
+  .toggle-btn {
+    color: #000;
+  }
+  .toggle-btn.active {
+    background: #000;
+    color: #fff;
+  }
+}
