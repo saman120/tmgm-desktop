@@ -44,7 +44,7 @@ function App() {
       setLoading(true);
       setError(null);
       const fetchedTasks = await taskAPI.getAllTasks();
-      sortTasks(fetchedTasks);
+      sortTasks(fetchedTasks.map(task => ({...task, delayCount: Math.round(task.delayCount||0)})));
     } catch (err) {
       console.error('Failed to load tasks:', err);
       setError('Failed to load tasks. Please check your connection.');
