@@ -178,8 +178,6 @@
   position: relative;
   justify-content: center;
   align-items: center;
-  padding: 8px 16px;
-  margin-bottom: 8px;
   min-height: 44px; /* Ensures header doesn't collapse awkwardly */
 }
 
@@ -246,8 +244,6 @@
   position: relative;
   justify-content: center;
   align-items: center;
-  padding: 8px 16px;
-  margin-bottom: 8px;
   min-height: 44px;
 }
 
