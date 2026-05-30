@@ -1,6 +1,6 @@
 // src/components/AddTaskForm.js
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, X, Save, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import './AddTaskForm.css';
 
 const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
@@ -21,20 +21,20 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
     if (!trimmedDescription || isSubmitting) return;
 
     try {
+      setIsSubmitting(true);
       setDescription('');
       const data = { description: trimmedDescription };
 
       const split = trimmedDescription.split('###');
-      if(split[1] && parseInt(split[1]) > 0) {
-        data.distractionCount= parseInt(split[1]);
+      if (split[1] && parseInt(split[1], 10) > 0) {
+        data.distractionCount = parseInt(split[1], 10);
       }
       await onSubmit(data);
-      
     } catch (error) {
       console.error('Failed to create task:', error);
       setDescription(trimmedDescription);
-      // Keep form open on error so user can retry
     } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -71,7 +71,6 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
   return (
     <div className="add-task-section active">
       <form className="add-task-form" onSubmit={handleSubmit}>
-        
         <div className="form-content">
           <input
             ref={inputRef}
@@ -91,4 +90,4 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
   );
 };
 
-export default AddTaskForm;
+export default React.memo(AddTaskForm);

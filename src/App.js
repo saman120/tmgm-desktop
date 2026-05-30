@@ -1,5 +1,5 @@
 // src/App.js - Main React Component
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import TaskList from './components/TaskList';
 import AddTaskForm from './components/AddTaskForm';
 import Header from './components/Header';
@@ -14,167 +14,168 @@ function App() {
   const [error, setError] = useState(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showRecent, setShowRecent] = useState(true);
-  
 
-  const sortTasks = (tasks) => {
-      // Sort tasks: in-progress first, then pending, then completed, all by created_at desc
-      const sortedTasks = tasks.sort((a, b) => {
-        const statusOrder = { 'in-progress': 0, 'pending': 1, backlog: 1.5, 'hold': 2, 'completed': 3 };
-        const statusDiff = statusOrder[a.status] - statusOrder[b.status];
-        
-        if (statusDiff !== 0) return statusDiff;
+  const sortTasks = useCallback((tasksToSort) => {
+    const sortedTasks = [...tasksToSort].sort((a, b) => {
+      const statusOrder = { 'in-progress': 0, 'pending': 1, backlog: 1.5, 'hold': 2, 'completed': 3 };
+      const statusDiff = (statusOrder[a.status] ?? 0) - (statusOrder[b.status] ?? 0);
+      
+      if (statusDiff !== 0) return statusDiff;
 
-        if(a.status === 'completed') 
-          return new Date(b.updatedAt || b.createdAt) -  new Date(a.updatedAt || a.createdAt);
+      const timeA = Date.parse(a.updatedAt || a.createdAt || 0);
+      const timeB = Date.parse(b.updatedAt || b.createdAt || 0);
 
-        const orderA = a.order !== undefined ? a.order : 0;
-        const orderB = b.order !== undefined ? b.order : 0;
-  
-        if (orderA !== orderB) {
-          return orderA - orderB; 
-        }
-        
-        return new Date(a.updatedAt || a.createdAt) - new Date(b.updatedAt || b.createdAt);
-      });
+      if (a.status === 'completed') return timeB - timeA;
 
-      setTasks(sortedTasks);
-  }
+      const orderA = a.order !== undefined ? a.order : 0;
+      const orderB = b.order !== undefined ? b.order : 0;
 
-  // Load tasks from API
+      if (orderA !== orderB) return orderA - orderB; 
+      
+      return timeA - timeB;
+    });
+
+    setTasks(sortedTasks);
+  }, []);
+
   const loadTasks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const fetchedTasks = await taskAPI.getAllTasks();
-      sortTasks(fetchedTasks.map(task => ({...task, delayCount: Math.round(task.delayCount||0)})));
+      sortTasks(fetchedTasks.map(task => ({ ...task, delayCount: Math.round(task.delayCount || 0) })));
     } catch (err) {
       console.error('Failed to load tasks:', err);
       setError('Failed to load tasks. Please check your connection.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sortTasks]);
 
-  // Create new task
   const createTask = useCallback(async (data) => {
     try {
       setError(null);
       const newTask = await taskAPI.createTask({ ...data, status: showRecent ? 'pending' : 'hold', title: 'Example' });
-      
       sortTasks([...tasks, newTask]);
     } catch (err) {
       console.error('Failed to create task:', err);
       setError('Failed to create task. Please try again.');
       throw err;
     }
-  }, [tasks]);
+  }, [tasks, showRecent, sortTasks]);
 
-  // Update existing task
   const updateTask = useCallback(async (taskId, updates) => {
     try {
       setError(null);
       const updatedTask = await taskAPI.updateTask(taskId, updates);
-
-      sortTasks(tasks.map(task => 
-        task._id === taskId ? updatedTask : task
-      ));
+      sortTasks(tasks.map(task => task._id === taskId ? updatedTask : task));
     } catch (err) {
       console.error('Failed to update task:', err);
       setError('Failed to update task. Please try again.');
       throw err;
     }
-  }, [tasks]);
+  }, [tasks, sortTasks]);
 
-  // Update existing task
   const deleteTask = useCallback(async (taskId) => {
     try {
       setError(null);
       await taskAPI.deleteTask(taskId);
-      sortTasks(tasks.filter(t => t._id !== taskId)); // Reload to ensure proper sorting
+      sortTasks(tasks.filter(t => t._id !== taskId));
     } catch (err) {
       console.error('Failed to delete task:', err);
       setError('Failed to delete task. Please try again.');
       throw err;
     }
-  }, [tasks]);
+  }, [tasks, sortTasks]);
 
-  // Load tasks on component mount
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
 
-  // Handle task status toggle
-  const handleStatusToggle = async (taskId, currentStatus, status) => {
-    const statusCycle = {
-      'hold': 'in-progress',
-      'in-progress': 'completed',
-      'pending': 'in-progress'
-    };
-
+  const handleStatusToggle = useCallback(async (taskId, currentStatus, status) => {
+    const statusCycle = { 'hold': 'in-progress', 'in-progress': 'completed', 'pending': 'in-progress' };
     const newStatus = status || statusCycle[currentStatus];
     await updateTask(taskId, { status: newStatus });
-  };
+  }, [updateTask]);
 
-  // Handle task description update
-  const handleDescriptionUpdate = async (taskId, newDescription) => {
+  const handleDescriptionUpdate = useCallback(async (taskId, newDescription) => {
     await updateTask(taskId, { description: newDescription });
-  };
+  }, [updateTask]);
 
-  // Handle task description update
-  const handleTaskUpdate = async (taskId, update) => {
+  const handleTaskUpdate = useCallback(async (taskId, update) => {
     await updateTask(taskId, update);
-  };
+  }, [updateTask]);
 
-  // Handle task description update
-  const handleDelete = async (taskId) => {
+  const handleDelete = useCallback(async (taskId) => {
     await deleteTask(taskId);
-  };
+  }, [deleteTask]);
 
-  const handleReorder = async (taskId, newOrder) => {
+  const handleReorder = useCallback(async (taskId, newOrder) => {
     await updateTask(taskId, { order: newOrder });
-    console.log('Reordered task', (tasks.map(task => 
-      task._id === taskId 
-        ? { ...task, order: newOrder } 
-        : task
-    )));
-    sortTasks(tasks.map(task => 
-      task._id === taskId 
-        ? { ...task, order: newOrder } 
-        : task
-    ));
-  }
+    sortTasks(tasks.map(task => task._id === taskId ? { ...task, order: newOrder } : task));
+  }, [tasks, sortTasks, updateTask]);
 
-  // Clear error message
-  const clearError = () => setError(null);
+  // --- NEW: Pre-calculated Derivations Hoisted to App.js ---
+  
+  const filteredTasks = useMemo(() => {
+    if (!showRecent) return tasks;
+    const twoWeeksAgoMs = Date.now() - (14 * 24 * 60 * 60 * 1000);
+    return tasks.filter(task => {
+      if (task.status === 'hold' || task.status === 'backlog') return false;
+      const dateString = task.updatedAt || task.createdAt;
+      if (!dateString) return true; 
+      return Date.parse(dateString) >= twoWeeksAgoMs;
+    });
+  }, [tasks, showRecent]);
+
+  // Pre-calculate stats so TaskList does an O(1) lookup instead of an O(N) array traversal on every clock tick
+  const taskStats = useMemo(() => {
+    const daily = {};
+    const hourly = {};
+    
+    filteredTasks.forEach(task => {
+      if (task.status === 'completed' && (task.completedAt || task.updatedAt)) {
+        const taskDate = new Date(task.completedAt || task.updatedAt);
+        const dayKey = taskDate.toLocaleDateString();
+        const hourKey = `${dayKey}-${taskDate.getHours()}`;
+
+        if (!daily[dayKey]) daily[dayKey] = { totalCompleted: 0 };
+        if (!hourly[hourKey]) hourly[hourKey] = { totalCompleted: 0 };
+
+        const taskWeight = 1 + (task.distractionCount || 0);
+        daily[dayKey].totalCompleted += taskWeight;
+        hourly[hourKey].totalCompleted += taskWeight;
+      }
+    });
+    return { daily, hourly };
+  }, [filteredTasks]);
+
+  const clearError = useCallback(() => setError(null), []);
+  const toggleShowRecent = useCallback(() => setShowRecent(prev => !prev), []);
 
   return (
     <div className="app">
       <Header />
-      
       <main className="app-main">
-        {error && (
-          <ErrorMessage 
-            message={error} 
-            onDismiss={clearError}
-          />
-        )}
+        {error && <ErrorMessage message={error} onDismiss={clearError} />}
         
         {loading ? (
           <LoadingSpinner />
         ) : (
           <TaskList
-            tasks={tasks}
+            tasks={filteredTasks}
+            stats={taskStats}
             onStatusToggle={handleStatusToggle}
             onDescriptionUpdate={handleDescriptionUpdate}
             onTaskUpdate={handleTaskUpdate}
             onDelete={handleDelete}
             onReorder={handleReorder}
             onRefresh={loadTasks}
-            onShowRecentToggle={() => setShowRecent(prev => !prev)}
+            onShowRecentToggle={toggleShowRecent}
+            showRecent={showRecent}
           />
         )}
       </main>
-      
       <footer className="app-footer">
         <AddTaskForm
           isOpen={isAddingTask}

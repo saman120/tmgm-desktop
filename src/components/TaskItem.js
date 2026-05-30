@@ -1,5 +1,5 @@
 // src/components/TaskItem.js
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import './TaskItem.css';
 
 const TaskItem = ({ 
@@ -20,13 +20,11 @@ const TaskItem = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.description);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(0); // Using timestamp instead of Date object
   
-  // State for Remarks Modal
   const [showRemarksModal, setShowRemarksModal] = useState(false);
   const [currentRemarks, setCurrentRemarks] = useState(task.remarks || []);
   const [newRemarkText, setNewRemarkText] = useState('');
-  // Add this inside your TaskItem component, right after your other state declarations:
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
 
   const editRef = useRef(null);
@@ -38,21 +36,16 @@ const TaskItem = ({
     }
   }, [isEditing]);
 
-  // NEW: Global listener to close the remarks modal on "Escape"
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       if (e.key === 'Escape' && showRemarksModal) {
         setShowRemarksModal(false);
       }
     };
-
     if (showRemarksModal) {
       document.addEventListener('keydown', handleGlobalKeyDown);
     }
-
-    return () => {
-      document.removeEventListener('keydown', handleGlobalKeyDown);
-    };
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
   }, [showRemarksModal]);
 
   const handleDoubleClick = () => {
@@ -69,8 +62,8 @@ const TaskItem = ({
         setIsLoading(true);
         const data = { description: trimmedValue };
         const split = trimmedValue.split('###');
-        if(split[1] && parseInt(split[1]) > 0) {
-          data.distractionCount = parseInt(split[1]);
+        if (split[1] && parseInt(split[1], 10) > 0) {
+          data.distractionCount = parseInt(split[1], 10);
         }
         await onTaskUpdate(task._id, data);
       } catch (error) {
@@ -111,39 +104,34 @@ const TaskItem = ({
   };
 
   const handleDeleteClick = async () => {
-    if (confirmDelete && confirmDelete > new Date()) {
+    const now = Date.now();
+    if (confirmDelete && confirmDelete > now) {
       setIsLoading(true);
       await onDelete(task._id); 
       setIsLoading(false);
-      setConfirmDelete(false);
-    } else setConfirmDelete(new Date().setSeconds(new Date().getSeconds()+5))
+      setConfirmDelete(0);
+    } else {
+      setConfirmDelete(now + 5000);
+    }
   };
 
-  // NEW: Live timer for in-progress tasks
   useEffect(() => {
     let intervalId;
-
     const calculateElapsed = () => {
-      // Assuming 'updatedAt' is updated when status changes. Fallback to createdAt if needed.
       const timestamp = task.inProgressAt || task.updatedAt || task.createdAt; 
       if (task.status === 'in-progress' && timestamp) {
-        const startTime = new Date(timestamp).getTime();
-        const now = Date.now();
-        const diffMs = now - startTime;
-        const mins = Math.floor(diffMs / 60000); // Convert milliseconds to minutes
+        const diffMs = Date.now() - Date.parse(timestamp);
+        const mins = Math.floor(diffMs / 60000);
         setElapsedMinutes(mins > 0 ? mins : 0);
       }
     };
 
     if (task.status === 'in-progress') {
-      calculateElapsed(); // Run immediately
-      intervalId = setInterval(calculateElapsed, 30000); // Check every 30 seconds
+      calculateElapsed();
+      intervalId = setInterval(calculateElapsed, 30000);
     }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [task.status]);
+    return () => intervalId && clearInterval(intervalId);
+  }, [task.status, task.inProgressAt, task.updatedAt, task.createdAt]);
 
   const handleIncrementDistraction = async () => {
     if (!onTaskUpdate) return;
@@ -157,7 +145,6 @@ const TaskItem = ({
     }
   };
 
-  // --- REMARKS LOGIC ---
   const openRemarksModal = () => {
     setCurrentRemarks(task.remarks || []);
     setNewRemarkText('');
@@ -201,44 +188,39 @@ const TaskItem = ({
     }
   };
 
-  const getStatusIcon = (task) => {
-    switch (task.status) {
-      case 'completed': return '✔';
-      default: return elapsedMinutes || '';
-    }
+  const getStatusIcon = (status) => {
+    return status === 'completed' ? '✔' : (elapsedMinutes || '');
   };
 
-  const getCompletedStyle = () => {
+  const completedStyle = useMemo(() => {
     if (task.status !== 'completed') return {};
     
     const dC = task.delayCount || 0;
     const distC = task.distractionCount || 0;
 
-    let delayColor = 'rgba(235, 248, 235, 0.9)'; // Greenish base
-    
-    // Purple for 0 delays
+    let delayColor = 'rgba(235, 248, 235, 0.9)'; 
     if (dC < 1) delayColor = 'rgba(247, 227, 250, 0.9)'; 
-    else if (dC >= 2 && dC <= 5) delayColor = 'rgba(255, 180, 180, 0.9)'; // more red
-    else if (dC > 5 && dC <= 10) delayColor = 'rgba(255, 120, 120, 0.9)'; // critical red
-    else if (dC > 10) delayColor = 'rgba(255, 70, 70, 0.9)'; // bad red
+    else if (dC >= 2 && dC <= 5) delayColor = 'rgba(255, 180, 180, 0.9)'; 
+    else if (dC > 5 && dC <= 10) delayColor = 'rgba(255, 120, 120, 0.9)'; 
+    else if (dC > 10) delayColor = 'rgba(255, 70, 70, 0.9)'; 
 
-    let distColor = 'rgba(235, 248, 235, 0.9)'; // Greenish base
-    if (distC > 1 && distC <= 5) distColor = 'rgba(255, 245, 180, 0.9)'; // slight yellow
-    else if (distC > 5 && distC <= 10) distColor = 'rgba(255, 220, 120, 0.9)'; // more yellow
-    else if (distC > 10) distColor = 'rgba(255, 190, 70, 0.9)'; // critical yellow
+    let distColor = 'rgba(235, 248, 235, 0.9)'; 
+    if (distC > 1 && distC <= 5) distColor = 'rgba(255, 245, 180, 0.9)'; 
+    else if (distC > 5 && distC <= 10) distColor = 'rgba(255, 220, 120, 0.9)'; 
+    else if (distC > 10) distColor = 'rgba(255, 190, 70, 0.9)'; 
 
     return { 
       background: `linear-gradient(135deg, ${delayColor} 0%, ${distColor} 100%)`,
-      color: '#1d1d1f' // Keep text dark and readable
+      color: '#1d1d1f' 
     };
-  };
+  }, [task.status, task.delayCount, task.distractionCount]);
 
   return (
     <>
       <div 
         className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} ${dragOverClass || ''} fade-in`}
         draggable={task.status !== 'completed'}
-        style={getCompletedStyle()} // <-- CRUCIAL: This applies the background color to the task!
+        style={completedStyle} 
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -246,18 +228,19 @@ const TaskItem = ({
       >
         <div className="drag-handle" title="Drag to reorder">
           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="9" cy="5" r="1"></circle>
-            <circle cx="9" cy="12" r="1"></circle>
-            <circle cx="9" cy="19" r="1"></circle>
-            <circle cx="15" cy="5" r="1"></circle>
-            <circle cx="15" cy="12" r="1"></circle>
-            <circle cx="15" cy="19" r="1"></circle>
+            <circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle>
+            <circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle>
           </svg>
         </div>
         
         <div className="task-actions">
-          {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
-          {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{getStatusIcon(task)}</div>}
+          {isLoading ? (
+            <div className="loading-spinner-small" title="Loading..."></div>
+          ) : (
+            <div className={`status-indicator ${task.status}`} onClick={() => task.status !== 'completed' && handleStatusClick()}>
+              {getStatusIcon(task.status)}
+            </div>
+          )}
         </div>
         
         <div className="task-content">
@@ -287,16 +270,8 @@ const TaskItem = ({
         
         <div className="task-actions-right">
           {!isLoading && <>
-            {/* {(task.status !== 'completed' || !!task.remarks?.length) && <button 
-              className="count-button remarks-btn" 
-              title="Double-click to View/Add Remarks" 
-              onDoubleClick={openRemarksModal}
-            >
-              <span className="status-icon">💬</span> {task.remarks?.length || 0}
-            </button>} */}
-
             {(!!task.distractionCount) && <button 
-              className={"count-button"+(task.status === 'completed' ? ' count-button-highlight' : '')}
+              className={`count-button${task.status === 'completed' ? ' count-button-highlight' : ''}`}
               title="Double-click to increment Distractions" 
               onDoubleClick={handleIncrementDistraction}
             >
@@ -304,18 +279,18 @@ const TaskItem = ({
             </button>}
 
             {(task.status === 'completed' && !!task.delayCount) && <button 
-              className={"count-button"+(task.status === 'completed' ? ' count-button-highlight' : '')} 
+              className="count-button count-button-highlight" 
             >
-              <span className="status-icon">⏰</span> {task.delayCount ? Math.round(task.delayCount) : 0}
+              <span className="status-icon">⏰</span> {Math.round(task.delayCount)}
             </button>}
 
-            {task.status !== 'completed' && <button className='delete-button' title={`Set completed`} onClick={() => handleStatusClick('completed')}>
+            {task.status !== 'completed' && <button className='delete-button' title="Set completed" onClick={() => handleStatusClick('completed')}>
               <span className="status-icon">✅ </span>
             </button>}
-            <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
+            <button className='delete-button' title="Set pending" onClick={() => handleStatusClick('pending')}>
               <span className="status-icon">⌛ </span>
             </button>
-            {task.status !== 'completed' && task.status !== 'hold' && <button className='delete-button' title={`Hold task`} onClick={() => handleStatusClick('hold')}>
+            {task.status !== 'completed' && task.status !== 'hold' && <button className='delete-button' title="Hold task" onClick={() => handleStatusClick('hold')}>
               <span className="status-icon">🚫 </span>
             </button>}
             {task.status !== 'completed' && <button className='delete-button' onClick={handleDeleteClick} title="Delete task (click twice within 5 seconds to confirm)">
@@ -325,12 +300,10 @@ const TaskItem = ({
         </div>
       </div>
 
-      {/* Remarks Modal Overlay */}
       {showRemarksModal && (
         <div className="remarks-modal-overlay" onClick={() => setShowRemarksModal(false)}>
           <div className="remarks-modal" onClick={(e) => e.stopPropagation()}>
             <h3>Task Remarks</h3>
-            
             <div className="remarks-list">
               {currentRemarks.length === 0 ? (
                 <p className="no-remarks">No remarks yet. Add one below!</p>
@@ -338,27 +311,19 @@ const TaskItem = ({
                 currentRemarks.map((rem, idx) => (
                   <div key={idx} className="remark-item">
                     <span>• {rem}</span>
-                    <button 
-                      className="remove-remark-btn" 
-                      onClick={() => handleRemoveRemark(idx)}
-                      title="Remove this remark"
-                    >
-                      ✕
-                    </button>
+                    <button className="remove-remark-btn" onClick={() => handleRemoveRemark(idx)} title="Remove this remark">✕</button>
                   </div>
                 ))
               )}
             </div>
-
             <form className="remark-input-container" onSubmit={handleAddRemark}>
               <textarea 
                 placeholder="Type a new remark... (Press Enter to add)" 
                 value={newRemarkText}
                 onChange={(e) => setNewRemarkText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setShowRemarksModal(false); // Also close if they press Escape while typing
-                  } else if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === 'Escape') setShowRemarksModal(false);
+                  else if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleAddRemark();
                   }
@@ -369,7 +334,6 @@ const TaskItem = ({
               />
               <button type="submit" disabled={!newRemarkText.trim()}>Add</button>
             </form>
-
             <div className="remarks-modal-actions">
               <button className="cancel-btn" onClick={() => setShowRemarksModal(false)}>Cancel</button>
               <button className="save-btn" onClick={handleSaveRemarks}>Save & Close</button>
@@ -381,4 +345,4 @@ const TaskItem = ({
   );
 };
 
-export default TaskItem;
+export default React.memo(TaskItem);
