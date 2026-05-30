@@ -3,13 +3,12 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import './TaskList.css';
-import { RefreshCw } from 'lucide-react';
 
 // NEW: Plays an MP3 file instead of the synthesized sound
 const playBlipSound = () => {
   try {
     // This looks for 'blip.mp3' in your public folder
-    const audio = new Audio('/blip.mp3'); 
+    const audio = new Audio('/beep.mp3'); 
     audio.play().catch(e => console.warn("Audio play blocked by browser (interact with the page first):", e));
   } catch (e) {
     console.error("Failed to play audio:", e);
