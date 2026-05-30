@@ -76,16 +76,16 @@ const TaskList = ({
     const targetHour = targetDate.getHours();
     const targetDay = targetDate.getDate();
 
-    completedInHr = tasks.filter(task => {
+    completedInHr = tasks.reduce((a,task) => {
       if (task.status === 'completed') {
         const timestamp = task.inProgressAt || task.updatedAt || task.createdAt;
         if (timestamp) {
           const pDate = new Date(timestamp);
-          return pDate.getHours() === targetHour && pDate.getDate() === targetDay;
+          return pDate.getHours() === targetHour && pDate.getDate() === targetDay ? a + 1 + (task.distractionCount || 0) : a;
         }
       }
-      return false;
-    }).length;
+      return a;
+    }, 0);
 
     const slotMinutes = isOvertime ? (currentMinute + 60 - 15) : (currentMinute - 15);
     elapsedSlot = Math.floor(slotMinutes / 5) + 1; 
