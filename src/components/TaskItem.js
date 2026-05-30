@@ -67,7 +67,12 @@ const TaskItem = ({
     if (trimmedValue && trimmedValue !== task.description) {
       try {
         setIsLoading(true);
-        await onDescriptionUpdate(task._id, trimmedValue);
+        const data = { description: trimmedValue };
+        const split = trimmedValue.split('###');
+        if(split[1] && parseInt(split[1]) > 0) {
+          data.distractionCount = parseInt(split[1]);
+        }
+        await onTaskUpdate(task._id, data);
       } catch (error) {
         console.error('Failed to update description:', error);
         setEditValue(task.description);
@@ -199,7 +204,7 @@ const TaskItem = ({
   const getStatusIcon = (task) => {
     switch (task.status) {
       case 'completed': return '✔';
-      default: return '';
+      default: return elapsedMinutes || '';
     }
   };
 
@@ -252,7 +257,7 @@ const TaskItem = ({
         
         <div className="task-actions">
           {isLoading && <div className="loading-spinner-small" title="Loading..."></div>}
-          {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{elapsedMinutes || getStatusIcon(task)}</div>}
+          {!isLoading && <div className={`status-indicator ${task.status}`} onClick={() => task.status !=='completed' && handleStatusClick()}>{getStatusIcon(task)}</div>}
         </div>
         
         <div className="task-content">
@@ -282,15 +287,15 @@ const TaskItem = ({
         
         <div className="task-actions-right">
           {!isLoading && <>
-            {(task.status !== 'completed' || !!task.remarks?.length) && <button 
+            {/* {(task.status !== 'completed' || !!task.remarks?.length) && <button 
               className="count-button remarks-btn" 
               title="Double-click to View/Add Remarks" 
               onDoubleClick={openRemarksModal}
             >
               <span className="status-icon">💬</span> {task.remarks?.length || 0}
-            </button>}
+            </button>} */}
 
-            {(task.status !== 'completed' || !!task.distractionCount) && <button 
+            {(!!task.distractionCount) && <button 
               className={"count-button"+(task.status === 'completed' ? ' count-button-highlight' : '')}
               title="Double-click to increment Distractions" 
               onDoubleClick={handleIncrementDistraction}
@@ -301,18 +306,21 @@ const TaskItem = ({
             {(task.status === 'completed' && !!task.delayCount) && <button 
               className={"count-button"+(task.status === 'completed' ? ' count-button-highlight' : '')} 
             >
-              <span className="status-icon">⏰</span> {task.delayCount || 0}
+              <span className="status-icon">⏰</span> {task.delayCount ? Math.round(task.delayCount) : 0}
             </button>}
 
+            {task.status !== 'completed' && <button className='delete-button' title={`Set completed`} onClick={() => handleStatusClick('completed')}>
+              <span className="status-icon">✅ </span>
+            </button>}
             <button className='delete-button' title={`Set pending`} onClick={() => handleStatusClick('pending')}>
               <span className="status-icon">⌛ </span>
             </button>
-            <button className='delete-button' title={`Hold task`} onClick={() => handleStatusClick('hold')}>
+            {task.status !== 'completed' && task.status !== 'hold' && <button className='delete-button' title={`Hold task`} onClick={() => handleStatusClick('hold')}>
               <span className="status-icon">🚫 </span>
-            </button>
-            <button className='delete-button' onClick={handleDeleteClick} title="Delete task (click twice within 5 seconds to confirm)">
+            </button>}
+            {task.status !== 'completed' && <button className='delete-button' onClick={handleDeleteClick} title="Delete task (click twice within 5 seconds to confirm)">
               <span className="status-icon">❌ </span>
-            </button>
+            </button>}
           </>}
         </div>
       </div>

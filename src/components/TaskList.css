@@ -171,3 +171,160 @@
 .task-list::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.3);
 }
+
+/* NEW: Header & Stats Positioning Styles */
+.task-list-header {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  min-height: 44px; /* Ensures header doesn't collapse awkwardly */
+}
+
+/* Ensure the toggle doesn't break flex alignment */
+.toggle-container {
+  display: flex;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  padding: 3px;
+  margin: 0; /* Removed margin: 0 auto so flexbox can handle centering */
+  z-index: 2;
+}
+
+.current-stats-container {
+  position: absolute;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+  z-index: 1;
+}
+
+.stat-pill {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d1d1f;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  cursor: default;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-contrast: high) {
+  .stat-pill {
+    border: 1px solid #000;
+    color: #000;
+    background: transparent;
+  }
+}
+
+/* NEW: Header & Stats Positioning Styles */
+.task-list-header {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  min-height: 44px;
+}
+
+.toggle-container {
+  display: flex;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  padding: 3px;
+  margin: 0; 
+  z-index: 2;
+}
+
+.current-stats-container {
+  position: absolute;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+  z-index: 1;
+}
+
+/* Base pill styles */
+.stat-pill {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d1d1f;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  cursor: default;
+  transition: all 0.3s ease;
+}
+
+.stat-pill.phase-indicator {
+  padding: 4px 12px;
+  letter-spacing: 0.3px;
+}
+
+/* Phase-specific colors! */
+.current-stats-container.phase-rest .stat-pill {
+  background: rgba(215, 255, 215, 0.9); /* Light green for Rest */
+  border-color: rgba(100, 200, 100, 0.3);
+}
+
+.current-stats-container.phase-planning .stat-pill {
+  background: rgba(255, 245, 215, 0.9); /* Warm yellow/orange for Plan */
+  border-color: rgba(220, 180, 100, 0.3);
+}
+
+.current-stats-container.phase-working .stat-pill {
+  background: rgba(240, 248, 255, 0.9); /* Crisp light blue for Work */
+  border-color: rgba(0, 122, 255, 0.2);
+}
+
+.stat-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-contrast: high) {
+  .stat-pill {
+    border: 1px solid #000 !important;
+    color: #000 !important;
+    background: transparent !important;
+  }
+}

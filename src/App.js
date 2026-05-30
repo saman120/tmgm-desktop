@@ -13,11 +13,13 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [showRecent, setShowRecent] = useState(true);
+  
 
   const sortTasks = (tasks) => {
       // Sort tasks: in-progress first, then pending, then completed, all by created_at desc
       const sortedTasks = tasks.sort((a, b) => {
-        const statusOrder = { 'in-progress': 0, 'pending': 1, 'hold': 2, 'completed': 3 };
+        const statusOrder = { 'in-progress': 0, 'pending': 1, backlog: 1.5, 'hold': 2, 'completed': 3 };
         const statusDiff = statusOrder[a.status] - statusOrder[b.status];
         
         if (statusDiff !== 0) return statusDiff;
@@ -54,10 +56,10 @@ function App() {
   }, []);
 
   // Create new task
-  const createTask = useCallback(async (description) => {
+  const createTask = useCallback(async (data) => {
     try {
       setError(null);
-      const newTask = await taskAPI.createTask({ description, title: 'Example' });
+      const newTask = await taskAPI.createTask({ ...data, status: showRecent ? 'pending' : 'hold', title: 'Example' });
       
       sortTasks([...tasks, newTask]);
     } catch (err) {
@@ -168,6 +170,7 @@ function App() {
             onDelete={handleDelete}
             onReorder={handleReorder}
             onRefresh={loadTasks}
+            onShowRecentToggle={() => setShowRecent(prev => !prev)}
           />
         )}
       </main>

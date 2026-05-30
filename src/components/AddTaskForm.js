@@ -22,7 +22,13 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
 
     try {
       setDescription('');
-      await onSubmit(trimmedDescription);
+      const data = { description: trimmedDescription };
+
+      const split = trimmedDescription.split('###');
+      if(split[1] && parseInt(split[1]) > 0) {
+        data.distractionCount= parseInt(split[1]);
+      }
+      await onSubmit(data);
       
     } catch (error) {
       console.error('Failed to create task:', error);
