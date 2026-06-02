@@ -62,8 +62,16 @@ const TaskItem = ({
         setIsLoading(true);
         const data = { description: trimmedValue };
         const split = trimmedValue.split('###');
-        if (split[1] && parseInt(split[1], 10) > 0) {
-          data.distractionCount = parseInt(split[1], 10);
+        if (split[1] ) {
+          const splitComma = split[1].split(',');
+          const distractionCount = parseInt(splitComma[0], 10);
+          const inProgressAt = splitComma[1] && new Date(splitComma[1]);
+          if( distractionCount > 0){
+            data.distractionCount = distractionCount;
+          } 
+          if(inProgressAt){
+            data.inProgressAt = inProgressAt;
+          }
         }
         await onTaskUpdate(task._id, data);
       } catch (error) {
