@@ -30,7 +30,7 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
         const splitComma = split[1].split(',');
         const distractionCount = parseInt(splitComma[0], 10);
         const inProgressAt = splitComma[1] && new Date(splitComma[1]);
-        if( distractionCount > 0){
+        if( distractionCount >= 0){
           data.distractionCount = distractionCount;
         } 
         if(inProgressAt){

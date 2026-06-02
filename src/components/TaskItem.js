@@ -66,7 +66,7 @@ const TaskItem = ({
           const splitComma = split[1].split(',');
           const distractionCount = parseInt(splitComma[0], 10);
           const inProgressAt = splitComma[1] && new Date(splitComma[1]);
-          if( distractionCount > 0){
+          if( distractionCount >= 0){
             data.distractionCount = distractionCount;
           } 
           if(inProgressAt){
@@ -203,11 +203,11 @@ const TaskItem = ({
   const completedStyle = useMemo(() => {
     if (task.status !== 'completed') return {};
     
-    const dC = task.delayCount || 0;
+    const dC = task.delayCount || 0 - task.distractionCount || 0;
     const distC = task.distractionCount || 0;
 
     let delayColor = 'rgba(235, 248, 235, 0.9)'; 
-    if (dC < 1) delayColor = 'rgba(247, 227, 250, 0.9)'; 
+    if (dC < 0.5) delayColor = 'rgba(247, 227, 250, 0.9)'; 
     else if (dC >= 2 && dC <= 5) delayColor = 'rgba(255, 180, 180, 0.9)'; 
     else if (dC > 5 && dC <= 10) delayColor = 'rgba(255, 120, 120, 0.9)'; 
     else if (dC > 10) delayColor = 'rgba(255, 70, 70, 0.9)'; 

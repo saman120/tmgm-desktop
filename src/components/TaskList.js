@@ -166,13 +166,13 @@ const TaskList = ({
           <button className="refresh-button" onClick={onRefresh} title="Refresh tasks"></button>
         </div>
 
-        <div className={`current-stats-container phase-${phase} fade-in`}>
+        <div className={`current-stats-container phase-${phase} fade-in`} onClick={() => playBlipSound()} title="Click for sound alert">
           <span className="stat-pill phase-indicator">
             {phase === 'rest' && '🛌 Rest'}
             {phase === 'planning' && '📝 Plan'}
             {phase === 'working' && '🔥 Work'}
           </span>
-          <span className="stat-pill" title="Elapsed minutes in current 5m block">⏱️ {elapsedTime}m</span>
+          <span className="stat-pill" title="Elapsed minutes in current 5m block">⏱️ {4-elapsedTime}m</span>
           {phase === 'working' && (
             <span className="stat-pill" title="Completed Tasks / Elapsed Slots">
               ✅ {completedInHr}/{elapsedSlot}
