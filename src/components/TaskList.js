@@ -6,8 +6,10 @@ import './TaskList.css';
 
 const playBlipSound = () => {
   try {
-    const audio = new Audio('/beep.mp3'); 
-    audio.play().catch(e => console.warn("Audio play blocked by browser:", e));
+    // FIX: Dynamically construct the path for Electron's file:// protocol
+    const soundPath = process.env.PUBLIC_URL + '/beep.mp3';
+    const audio = new Audio(soundPath); 
+    audio.play().catch(e => console.warn("Audio play blocked:", e));
   } catch (e) {
     console.error("Failed to play audio:", e);
   }
@@ -83,9 +85,10 @@ const TaskList = ({
       [key]: prev[key] !== undefined ? !prev[key] : !defaultCollapsed
     }));
   };
-  const getHourlyStyle = (totalCompleted, expectedSlots, isWeekend) => {
-    // NEW: Forgiving weekend scale (light green -> dark green)
-    if (isWeekend) {
+  
+  const getHourlyStyle = (totalCompleted, expectedSlots, isOffTime) => {
+    // NEW: Forgiving scale for weekends AND off-hours (before 9 AM / after 7 PM)
+    if (isOffTime) {
       if (totalCompleted >= 6) return { background: 'rgba(60, 190, 60, 0.9)', color: '#ffffff' }; 
       if (totalCompleted >= 4) return { background: 'rgba(100, 210, 100, 0.9)', color: '#1d1d1f' };
       if (totalCompleted >= 2) return { background: 'rgba(140, 225, 140, 0.9)', color: '#1d1d1f' }; 
@@ -93,7 +96,7 @@ const TaskList = ({
       return { background: 'rgba(230, 250, 230, 0.95)', color: '#1d1d1f' }; // Relaxed pale green for 0
     }
 
-    // Standard weekday scale
+    // Standard working hours scale
     const ratio = expectedSlots / 9;
     const t = (mult) => mult * ratio;
 
@@ -238,37 +241,48 @@ const TaskList = ({
 };
 
 const pushHourDivider = (dateObj, hourKey) => {
-    const hour = dateObj.getHours();
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
-    const isCurrentHour = hourKey === `${currentTime.toLocaleDateString()}-${currentTime.getHours()}`;
-    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; // NEW
-    
-    let expectedSlots = 9; 
-    if (isCurrentHour) {
-        const m = currentTime.getMinutes();
-        expectedSlots = m < 15 ? 1 : Math.floor((m - 15) / 5) + 1;
-    }
+  const hour = dateObj.getHours();
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
+  const isCurrentHour = hourKey === `${currentTime.toLocaleDateString()}-${currentTime.getHours()}`;
+  
+  // NEW: Calculate if it's the weekend OR outside 9 AM - 7 PM
+  const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+  const isOffHour = hour < 9 || hour >= 19; 
+  const isOffTime = isWeekend || isOffHour;
+  
+  let expectedSlots = 9; 
+  if (isCurrentHour && !isOffTime) {
+      const m = currentTime.getMinutes();
+      expectedSlots = m < 15 ? 1 : Math.floor((m - 15) / 5) + 1;
+  } else if (isOffTime) {
+      // No "expected" slots during off hours, but we can set it to 1 for display purity
+      expectedSlots = isCurrentHour ? 1 : hourStats.totalCompleted || 1;
+  }
 
-    const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots, isWeekend); // PASSED FLAG
-    const isCollapsed = collapsedGroups[hourKey] ?? false;
+  // Pass the combined flag here
+  const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots, isOffTime); 
+  const isCollapsed = collapsedGroups[hourKey] ?? false;
 
-    const statsText = ` • ${hourStats.totalCompleted}/${expectedSlots} slots`;
+  // Adjust text slightly so it doesn't say "0/1 slots" during off hours if empty
+  const statsText = isOffTime 
+    ? ` • ${hourStats.totalCompleted} slots` 
+    : ` • ${hourStats.totalCompleted}/${expectedSlots} slots`;
 
-    renderElements.push(
-        <div className="time-divider hour-divider" key={`hour-${hourKey}`}>
-            <span 
-              className="time-divider-text hour-text" 
-              style={{ ...hourStyle, cursor: 'pointer', userSelect: 'none' }} 
-              onClick={() => toggleGroup(hourKey, false)}
-              title={`Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}
-            >
-                {isCollapsed ? '▶ ' : '▼ '} {displayHour} {ampm}{statsText}
-            </span>
-        </div>
-    );
-    lastHourKey = hourKey;
+  renderElements.push(
+      <div className="time-divider hour-divider" key={`hour-${hourKey}`}>
+          <span 
+            className="time-divider-text hour-text" 
+            style={{ ...hourStyle, cursor: 'pointer', userSelect: 'none' }} 
+            onClick={() => toggleGroup(hourKey, false)}
+            title={isOffTime ? `Off-hours slots: ${hourStats.totalCompleted}` : `Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}
+          >
+              {isCollapsed ? '▶ ' : '▼ '} {displayHour} {ampm}{statsText}
+          </span>
+      </div>
+  );
+  lastHourKey = hourKey;
 };
 
   tasks.forEach((task, index) => {
