@@ -83,8 +83,17 @@ const TaskList = ({
       [key]: prev[key] !== undefined ? !prev[key] : !defaultCollapsed
     }));
   };
+  const getHourlyStyle = (totalCompleted, expectedSlots, isWeekend) => {
+    // NEW: Forgiving weekend scale (light green -> dark green)
+    if (isWeekend) {
+      if (totalCompleted >= 6) return { background: 'rgba(60, 190, 60, 0.9)', color: '#ffffff' }; 
+      if (totalCompleted >= 4) return { background: 'rgba(100, 210, 100, 0.9)', color: '#1d1d1f' };
+      if (totalCompleted >= 2) return { background: 'rgba(140, 225, 140, 0.9)', color: '#1d1d1f' }; 
+      if (totalCompleted > 0) return { background: 'rgba(180, 240, 180, 0.9)', color: '#1d1d1f' }; 
+      return { background: 'rgba(230, 250, 230, 0.95)', color: '#1d1d1f' }; // Relaxed pale green for 0
+    }
 
-  const getHourlyStyle = (totalCompleted, expectedSlots) => {
+    // Standard weekday scale
     const ratio = expectedSlots / 9;
     const t = (mult) => mult * ratio;
 
@@ -96,13 +105,21 @@ const TaskList = ({
     return { background: 'rgba(255, 90, 90, 0.9)', color: '#1d1d1f' }; 
   };
 
-  const getDailyStyle = (dailyAvg) => {
+  const getDailyStyle = (dailyAvg, isWeekend) => {
+    // NEW: Forgiving weekend scale
+    if (isWeekend) {
+      if (dailyAvg > 6) return { background: 'rgba(60, 190, 60, 0.9)', color: '#ffffff' }; 
+      if (dailyAvg >= 4) return { background: 'rgba(100, 210, 100, 0.9)', color: '#1d1d1f' };
+      if (dailyAvg > 0) return { background: 'rgba(140, 225, 140, 0.9)', color: '#1d1d1f' }; 
+      return { background: 'rgba(225, 248, 225, 0.95)', color: '#1d1d1f' }; // Relaxed pale green for 0
+    }
+
+    // Standard weekday scale
     if (dailyAvg > 9) return { background: 'rgba(140, 225, 140, 0.9)', color: '#1d1d1f' }; 
     if (dailyAvg >= 7) return { background: 'rgba(190, 245, 190, 0.9)', color: '#1d1d1f' }; 
     if (dailyAvg >= 5) return { background: 'rgba(255, 235, 200, 0.9)', color: '#1d1d1f' }; 
     if (dailyAvg >= 3) return { background: 'rgba(255, 190, 190, 0.9)', color: '#1d1d1f' }; 
     if (dailyAvg > 0) return { background: 'rgba(255, 120, 120, 0.9)', color: '#1d1d1f' }; 
-    // NEW: Stark Dark Red when there is completely zero activity
     return { background: 'rgba(215, 65, 65, 0.95)', color: '#ffffff' }; 
   };
 
@@ -183,10 +200,12 @@ const TaskList = ({
   let lastDayKey = null;
   let lastHourKey = null;
   
+  // Helper functions to push collapsible dividers
   const pushDayDivider = (dateObj, dayKey) => {
     const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
     const isToday = dayKey === currentTime.toLocaleDateString();
+    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; // NEW
     
     let hoursElapsed = 8; 
     if (isToday) {
@@ -196,9 +215,7 @@ const TaskList = ({
     }
 
     const dailyAvg = dayStats.totalCompleted / hoursElapsed;
-    const dayStyle = getDailyStyle(dailyAvg);
-    
-    // NEW: Default to collapsed if it's not today!
+    const dayStyle = getDailyStyle(dailyAvg, isWeekend); // PASSED FLAG
     const isCollapsed = collapsedGroups[dayKey] ?? !isToday;
 
     const statsText = ` • ${dayStats.totalCompleted} slots (${dailyAvg.toFixed(1)}/hr)`;
@@ -226,6 +243,7 @@ const pushHourDivider = (dateObj, hourKey) => {
     const displayHour = hour % 12 || 12;
     const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
     const isCurrentHour = hourKey === `${currentTime.toLocaleDateString()}-${currentTime.getHours()}`;
+    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; // NEW
     
     let expectedSlots = 9; 
     if (isCurrentHour) {
@@ -233,9 +251,7 @@ const pushHourDivider = (dateObj, hourKey) => {
         expectedSlots = m < 15 ? 1 : Math.floor((m - 15) / 5) + 1;
     }
 
-    const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots);
-    
-    // Hours default to expanded (false)
+    const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots, isWeekend); // PASSED FLAG
     const isCollapsed = collapsedGroups[hourKey] ?? false;
 
     const statsText = ` • ${hourStats.totalCompleted}/${expectedSlots} slots`;
