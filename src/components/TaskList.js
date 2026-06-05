@@ -31,6 +31,9 @@ const TaskList = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const lastPlayedMinuteRef = useRef(new Date().getMinutes());
 
+  // --- NEW: State to track which groups are collapsed ---
+  const [collapsedGroups, setCollapsedGroups] = useState({});
+
   useEffect(() => {
     const intervalId = setInterval(() => setCurrentTime(new Date()), 10000); 
     return () => clearInterval(intervalId);
@@ -63,7 +66,6 @@ const TaskList = ({
     const targetDate = new Date(currentTime);
     if (isOvertime) targetDate.setHours(targetDate.getHours() - 1);
     
-    // O(1) Lookup replacing the previous expensive array reduce loop
     const targetHourKey = `${targetDate.toLocaleDateString()}-${targetDate.getHours()}`;
     completedInHr = stats.hourly[targetHourKey]?.totalCompleted || 0;
 
@@ -74,6 +76,13 @@ const TaskList = ({
   if (tasks.length === 0) {
     return <EmptyState onRefresh={onRefresh} />;
   }
+
+  const toggleGroup = (key, defaultCollapsed = false) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [key]: prev[key] !== undefined ? !prev[key] : !defaultCollapsed
+    }));
+  };
 
   const getHourlyStyle = (totalCompleted, expectedSlots) => {
     const ratio = expectedSlots / 9;
@@ -92,7 +101,9 @@ const TaskList = ({
     if (dailyAvg >= 7) return { background: 'rgba(190, 245, 190, 0.9)', color: '#1d1d1f' }; 
     if (dailyAvg >= 5) return { background: 'rgba(255, 235, 200, 0.9)', color: '#1d1d1f' }; 
     if (dailyAvg >= 3) return { background: 'rgba(255, 190, 190, 0.9)', color: '#1d1d1f' }; 
-    return { background: 'rgba(255, 120, 120, 0.9)', color: '#1d1d1f' }; 
+    if (dailyAvg > 0) return { background: 'rgba(255, 120, 120, 0.9)', color: '#1d1d1f' }; 
+    // NEW: Stark Dark Red when there is completely zero activity
+    return { background: 'rgba(215, 65, 65, 0.95)', color: '#ffffff' }; 
   };
 
   const handleDragStart = (e, index) => {
@@ -144,8 +155,203 @@ const TaskList = ({
     setDragOverIndex(null); 
   };
 
+
+  // --- NEW: Procedural Render Array to manually inject empty gap days ---
+  const renderElements = [];
+
+  // Determine the cutoff threshold (so we know when to stop injecting empty days)
+  let currentDayIter = new Date(currentTime);
+  currentDayIter.setHours(0, 0, 0, 0);
+  
+  let oldestDateMs = currentDayIter.getTime();
+  if (!showRecent && tasks.length > 0) {
+      tasks.forEach(t => {
+         if (t.status === 'completed') {
+             const ts = t.inProgressAt || t.completedAt || t.updatedAt;
+             if (ts && Date.parse(ts) < oldestDateMs) {
+                 oldestDateMs = Date.parse(ts);
+             }
+         }
+      });
+  } else {
+      // Default cutoff is 14 days ago
+      oldestDateMs = currentDayIter.getTime() - (14 * 24 * 60 * 60 * 1000);
+  }
+  const cutoffDay = new Date(oldestDateMs);
+  cutoffDay.setHours(0, 0, 0, 0);
+
   let lastDayKey = null;
   let lastHourKey = null;
+  
+  const pushDayDivider = (dateObj, dayKey) => {
+    const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
+    const isToday = dayKey === currentTime.toLocaleDateString();
+    
+    let hoursElapsed = 8; 
+    if (isToday) {
+        const h = currentTime.getHours();
+        const m = currentTime.getMinutes();
+        hoursElapsed = h < 9 ? 1 : Math.max(0.5, (h - 9) + (m / 60)); 
+    }
+
+    const dailyAvg = dayStats.totalCompleted / hoursElapsed;
+    const dayStyle = getDailyStyle(dailyAvg);
+    
+    // NEW: Default to collapsed if it's not today!
+    const isCollapsed = collapsedGroups[dayKey] ?? !isToday;
+
+    const statsText = ` • ${dayStats.totalCompleted} slots (${dailyAvg.toFixed(1)}/hr)`;
+
+    renderElements.push(
+        <div className="time-divider day-divider" key={`day-${dayKey}`}>
+            <span 
+              className="time-divider-text day-text" 
+              style={{ ...dayStyle, cursor: 'pointer', userSelect: 'none' }} 
+              onClick={() => toggleGroup(dayKey, !isToday)}
+              title={`Daily Avg: ${dailyAvg.toFixed(1)} slots/hr (over ${hoursElapsed.toFixed(1)} hrs)`}
+            >
+                {isCollapsed ? '▶ ' : '▼ '} {displayDate}{statsText}
+            </span>
+        </div>
+    );
+    
+    lastDayKey = dayKey;
+    lastHourKey = null; 
+};
+
+const pushHourDivider = (dateObj, hourKey) => {
+    const hour = dateObj.getHours();
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
+    const isCurrentHour = hourKey === `${currentTime.toLocaleDateString()}-${currentTime.getHours()}`;
+    
+    let expectedSlots = 9; 
+    if (isCurrentHour) {
+        const m = currentTime.getMinutes();
+        expectedSlots = m < 15 ? 1 : Math.floor((m - 15) / 5) + 1;
+    }
+
+    const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots);
+    
+    // Hours default to expanded (false)
+    const isCollapsed = collapsedGroups[hourKey] ?? false;
+
+    const statsText = ` • ${hourStats.totalCompleted}/${expectedSlots} slots`;
+
+    renderElements.push(
+        <div className="time-divider hour-divider" key={`hour-${hourKey}`}>
+            <span 
+              className="time-divider-text hour-text" 
+              style={{ ...hourStyle, cursor: 'pointer', userSelect: 'none' }} 
+              onClick={() => toggleGroup(hourKey, false)}
+              title={`Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}
+            >
+                {isCollapsed ? '▶ ' : '▼ '} {displayHour} {ampm}{statsText}
+            </span>
+        </div>
+    );
+    lastHourKey = hourKey;
+};
+
+  tasks.forEach((task, index) => {
+      let dragOverClass = '';
+      if (dragOverIndex === index) {
+          dragOverClass = draggedIndex < index ? 'drag-over-bottom' : 'drag-over-top';
+      }
+
+      // 1. Immediately Render Active Tasks
+      if (task.status !== 'completed') {
+          renderElements.push(
+              <TaskItem
+                  key={task._id}
+                  task={task}
+                  isFirst={index === 0 && task.status === 'in-progress'}
+                  onStatusToggle={onStatusToggle}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                  onDelete={onDelete}
+                  draggable={true}
+                  onTaskUpdate={onTaskUpdate}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                  isDragged={draggedIndex === index}
+                  dragOverClass={dragOverClass}
+              />
+          );
+          return;
+      }
+
+      // 2. Manage Completed Tasks Hierarchy
+      const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
+      const taskDate = new Date(timestamp || currentTime);
+      
+      const dayKey = taskDate.toLocaleDateString();
+      const hour = taskDate.getHours();
+      const hourKey = `${dayKey}-${hour}`;
+
+      const taskDayStart = new Date(taskDate);
+      taskDayStart.setHours(0, 0, 0, 0);
+
+      // Inject completely empty days to fill chronological gaps
+      while (currentDayIter > taskDayStart) {
+          const emptyDayKey = currentDayIter.toLocaleDateString();
+          if (emptyDayKey !== lastDayKey) {
+              pushDayDivider(currentDayIter, emptyDayKey);
+          }
+          currentDayIter.setDate(currentDayIter.getDate() - 1);
+      }
+
+      // Push the active day divider
+      if (dayKey !== lastDayKey) {
+          pushDayDivider(taskDate, dayKey);
+          currentDayIter.setDate(currentDayIter.getDate() - 1);
+      }
+
+      // NEW: Ensure loop respects the "Not Today" default collapse rule
+      const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== currentTime.toLocaleDateString());
+
+      // Push hour divider (only if the parent Day isn't collapsed)
+      if (!isDayCollapsed && hourKey !== lastHourKey) {
+          pushHourDivider(taskDate, hourKey);
+      }
+
+      // NEW: Ensure loop respects the Hour default rule
+      const isHourCollapsed = collapsedGroups[hourKey] ?? false;
+
+      // Finally, push the TaskItem itself (if neither parent is collapsed)
+      if (!isDayCollapsed && !isHourCollapsed) {
+          renderElements.push(
+              <TaskItem
+                  key={task._id}
+                  task={task}
+                  isFirst={false}
+                  onStatusToggle={onStatusToggle}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                  onDelete={onDelete}
+                  draggable={true}
+                  onTaskUpdate={onTaskUpdate}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                  isDragged={draggedIndex === index}
+                  dragOverClass={dragOverClass}
+              />
+          );
+      }
+  });
+
+  // 3. Cleanup Trailing Empty Days
+  while (currentDayIter >= cutoffDay) {
+      const emptyDayKey = currentDayIter.toLocaleDateString();
+      if (emptyDayKey !== lastDayKey) {
+          pushDayDivider(currentDayIter, emptyDayKey);
+      }
+      currentDayIter.setDate(currentDayIter.getDate() - 1);
+  }
 
   return (
     <div className="task-list-container">
@@ -182,93 +388,7 @@ const TaskList = ({
       </div>
 
       <div className="task-list">
-        {tasks.map((task, index) => {
-          let dayDivider = null;
-          let hourDivider = null;
-
-          if (task.status === 'completed' && (task.completedAt || task.updatedAt)) {
-            const taskDate = new Date(task.completedAt || task.updatedAt);
-            const dayKey = taskDate.toLocaleDateString();
-            const hour = taskDate.getHours();
-            const hourKey = `${dayKey}-${hour}`;
-
-            if (dayKey !== lastDayKey) {
-              lastDayKey = dayKey;
-              const displayDate = taskDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-              const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
-              const isToday = dayKey === currentTime.toLocaleDateString();
-              
-              let hoursElapsed = 8; 
-              if (isToday) {
-                const h = currentTime.getHours();
-                const m = currentTime.getMinutes();
-                hoursElapsed = h < 9 ? 1 : Math.max(0.5, (h - 9) + (m / 60)); 
-              }
-
-              const dailyAvg = dayStats.totalCompleted / hoursElapsed;
-              const dayStyle = getDailyStyle(dailyAvg);
-
-              dayDivider = (
-                <div className="time-divider day-divider" key={`day-${dayKey}`}>
-                  <span className="time-divider-text day-text" style={dayStyle} title={`Daily Avg: ${dailyAvg.toFixed(1)} slots/hr (over ${hoursElapsed.toFixed(1)} hrs)`}>
-                    {displayDate}
-                  </span>
-                </div>
-              );
-            }
-
-            if (hourKey !== lastHourKey) {
-              lastHourKey = hourKey;
-              const ampm = hour >= 12 ? 'PM' : 'AM';
-              const displayHour = hour % 12 || 12;
-              const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
-              const isCurrentHour = hourKey === `${currentTime.toLocaleDateString()}-${currentTime.getHours()}`;
-              
-              let expectedSlots = 9; 
-              if (isCurrentHour) {
-                const m = currentTime.getMinutes();
-                expectedSlots = m < 15 ? 1 : Math.floor((m - 15) / 5) + 1;
-              }
-
-              const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots);
-
-              hourDivider = (
-                <div className="time-divider hour-divider" key={`hour-${hourKey}`}>
-                  <span className="time-divider-text hour-text" style={hourStyle} title={`Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}>
-                    {displayHour} {ampm}
-                  </span>
-                </div>
-              );
-            }
-          }
-
-          let dragOverClass = '';
-          if (dragOverIndex === index) {
-            dragOverClass = draggedIndex < index ? 'drag-over-bottom' : 'drag-over-top';
-          }
-
-          return (
-            <React.Fragment key={task._id}>
-              {dayDivider}
-              {hourDivider}
-              <TaskItem
-                task={task}
-                isFirst={index === 0 && task.status === 'in-progress'}
-                onStatusToggle={onStatusToggle}
-                onDescriptionUpdate={onDescriptionUpdate}
-                onDelete={onDelete}
-                draggable={true}
-                onTaskUpdate={onTaskUpdate}
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={(e) => handleDrop(e, index)}
-                onDragEnd={handleDragEnd}
-                isDragged={draggedIndex === index}
-                dragOverClass={dragOverClass}
-              />
-            </React.Fragment>
-          );
-        })}
+        {renderElements}
       </div>
     </div>
   );

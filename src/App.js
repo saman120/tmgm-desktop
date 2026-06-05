@@ -14,7 +14,7 @@ function App() {
   const [error, setError] = useState(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showRecent, setShowRecent] = useState(true);
-
+  
   const sortTasks = useCallback((tasksToSort) => {
     const sortedTasks = [...tasksToSort].sort((a, b) => {
       const statusOrder = { 'in-progress': 0, 'pending': 1, backlog: 1.5, 'hold': 2, 'completed': 3 };
@@ -22,8 +22,9 @@ function App() {
       
       if (statusDiff !== 0) return statusDiff;
 
-      const timeA = Date.parse(a.updatedAt || a.createdAt || 0);
-      const timeB = Date.parse(b.updatedAt || b.createdAt || 0);
+      // FIX: Prioritize inProgressAt so the array perfectly matches the grouping engine!
+      const timeA = Date.parse(a.inProgressAt || a.completedAt || a.updatedAt || a.createdAt || 0);
+      const timeB = Date.parse(b.inProgressAt || b.completedAt || b.updatedAt || b.createdAt || 0);
 
       if (a.status === 'completed') return timeB - timeA;
 
@@ -115,8 +116,6 @@ function App() {
     sortTasks(tasks.map(task => task._id === taskId ? { ...task, order: newOrder } : task));
   }, [tasks, sortTasks, updateTask]);
 
-  // --- NEW: Pre-calculated Derivations Hoisted to App.js ---
-  
   const filteredTasks = useMemo(() => {
     if (!showRecent) return tasks;
     const twoWeeksAgoMs = Date.now() - (14 * 24 * 60 * 60 * 1000);
@@ -128,23 +127,28 @@ function App() {
     });
   }, [tasks, showRecent]);
 
-  // Pre-calculate stats so TaskList does an O(1) lookup instead of an O(N) array traversal on every clock tick
+  // Pre-calculate stats using inProgressAt as the primary grouping key
   const taskStats = useMemo(() => {
     const daily = {};
     const hourly = {};
     
     filteredTasks.forEach(task => {
-      if (task.status === 'completed' && (task.completedAt || task.updatedAt)) {
-        const taskDate = new Date(task.completedAt || task.updatedAt);
-        const dayKey = taskDate.toLocaleDateString();
-        const hourKey = `${dayKey}-${taskDate.getHours()}`;
+      if (task.status === 'completed') {
+        // Fallback safely to completedAt or updatedAt only if inProgressAt is somehow missing
+        const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
+        
+        if (timestamp) {
+          const taskDate = new Date(timestamp);
+          const dayKey = taskDate.toLocaleDateString();
+          const hourKey = `${dayKey}-${taskDate.getHours()}`;
 
-        if (!daily[dayKey]) daily[dayKey] = { totalCompleted: 0 };
-        if (!hourly[hourKey]) hourly[hourKey] = { totalCompleted: 0 };
+          if (!daily[dayKey]) daily[dayKey] = { totalCompleted: 0 };
+          if (!hourly[hourKey]) hourly[hourKey] = { totalCompleted: 0 };
 
-        const taskWeight = 1 + (task.distractionCount || 0);
-        daily[dayKey].totalCompleted += taskWeight;
-        hourly[hourKey].totalCompleted += taskWeight;
+          const taskWeight = 1 + (task.distractionCount || 0);
+          daily[dayKey].totalCompleted += taskWeight;
+          hourly[hourKey].totalCompleted += taskWeight;
+        }
       }
     });
     return { daily, hourly };
