@@ -87,43 +87,39 @@ const TaskList = ({
   };
   
   const getHourlyStyle = (totalCompleted, expectedSlots, isOffTime) => {
-    // NEW: Forgiving scale for weekends AND off-hours (before 9 AM / after 7 PM)
     if (isOffTime) {
-      if (totalCompleted >= 6) return { background: 'rgba(60, 190, 60, 0.9)', color: '#ffffff' }; 
-      if (totalCompleted >= 4) return { background: 'rgba(100, 210, 100, 0.9)', color: '#1d1d1f' };
-      if (totalCompleted >= 2) return { background: 'rgba(140, 225, 140, 0.9)', color: '#1d1d1f' }; 
-      if (totalCompleted > 0) return { background: 'rgba(180, 240, 180, 0.9)', color: '#1d1d1f' }; 
-      return { background: 'rgba(230, 250, 230, 0.95)', color: '#1d1d1f' }; // Relaxed pale green for 0
+      if (totalCompleted >= 6) return { background: 'var(--stat-off-green-1)', color: 'var(--stat-text-light)' }; 
+      if (totalCompleted >= 4) return { background: 'var(--stat-off-green-2)', color: 'var(--stat-text-dark)' };
+      if (totalCompleted >= 2) return { background: 'var(--stat-green-1)', color: 'var(--stat-text-dark)' }; 
+      if (totalCompleted > 0) return { background: 'var(--stat-off-green-3)', color: 'var(--stat-text-dark)' }; 
+      return { background: 'var(--stat-off-green-4)', color: 'var(--stat-text-dark)' }; 
     }
 
-    // Standard working hours scale
     const ratio = expectedSlots / 9;
     const t = (mult) => mult * ratio;
 
-    if (totalCompleted > t(9)) return { background: 'rgba(140, 225, 140, 0.9)', color: '#1d1d1f' }; 
-    if (totalCompleted >= t(8)) return { background: 'rgba(190, 245, 190, 0.9)', color: '#1d1d1f' }; 
-    if (totalCompleted >= t(6)) return { background: 'rgba(255, 235, 200, 0.9)', color: '#1d1d1f' }; 
-    if (totalCompleted >= t(4)) return { background: 'rgba(255, 190, 190, 0.9)', color: '#1d1d1f' }; 
-    if (totalCompleted >= t(2)) return { background: 'rgba(255, 140, 140, 0.9)', color: '#1d1d1f' }; 
-    return { background: 'rgba(255, 90, 90, 0.9)', color: '#1d1d1f' }; 
+    if (totalCompleted > t(9)) return { background: 'var(--stat-green-1)', color: 'var(--stat-text-dark)' }; 
+    if (totalCompleted >= t(8)) return { background: 'var(--stat-green-2)', color: 'var(--stat-text-dark)' }; 
+    if (totalCompleted >= t(6)) return { background: 'var(--stat-yellow)', color: 'var(--stat-text-dark)' }; 
+    if (totalCompleted >= t(4)) return { background: 'var(--stat-red-1)', color: 'var(--stat-text-dark)' }; 
+    if (totalCompleted >= t(2)) return { background: 'var(--stat-red-2)', color: 'var(--stat-text-dark)' }; 
+    return { background: 'var(--stat-red-3)', color: 'var(--stat-text-dark)' }; 
   };
 
-  const getDailyStyle = (dailyAvg, isWeekend) => {
-    // NEW: Forgiving weekend scale
-    if (isWeekend) {
-      if (dailyAvg > 6) return { background: 'rgba(60, 190, 60, 0.9)', color: '#ffffff' }; 
-      if (dailyAvg >= 4) return { background: 'rgba(100, 210, 100, 0.9)', color: '#1d1d1f' };
-      if (dailyAvg > 0) return { background: 'rgba(140, 225, 140, 0.9)', color: '#1d1d1f' }; 
-      return { background: 'rgba(225, 248, 225, 0.95)', color: '#1d1d1f' }; // Relaxed pale green for 0
+  const getDailyStyle = (dailyAvg, isOffTime) => {
+    if (isOffTime) {
+      if (dailyAvg > 6) return { background: 'var(--stat-off-green-1)', color: 'var(--stat-text-light)' }; 
+      if (dailyAvg >= 4) return { background: 'var(--stat-off-green-2)', color: 'var(--stat-text-dark)' };
+      if (dailyAvg > 0) return { background: 'var(--stat-green-1)', color: 'var(--stat-text-dark)' }; 
+      return { background: 'var(--stat-off-green-4)', color: 'var(--stat-text-dark)' }; 
     }
 
-    // Standard weekday scale
-    if (dailyAvg > 9) return { background: 'rgba(140, 225, 140, 0.9)', color: '#1d1d1f' }; 
-    if (dailyAvg >= 7) return { background: 'rgba(190, 245, 190, 0.9)', color: '#1d1d1f' }; 
-    if (dailyAvg >= 5) return { background: 'rgba(255, 235, 200, 0.9)', color: '#1d1d1f' }; 
-    if (dailyAvg >= 3) return { background: 'rgba(255, 190, 190, 0.9)', color: '#1d1d1f' }; 
-    if (dailyAvg > 0) return { background: 'rgba(255, 120, 120, 0.9)', color: '#1d1d1f' }; 
-    return { background: 'rgba(215, 65, 65, 0.95)', color: '#ffffff' }; 
+    if (dailyAvg > 9) return { background: 'var(--stat-green-1)', color: 'var(--stat-text-dark)' }; 
+    if (dailyAvg >= 7) return { background: 'var(--stat-green-2)', color: 'var(--stat-text-dark)' }; 
+    if (dailyAvg >= 5) return { background: 'var(--stat-yellow)', color: 'var(--stat-text-dark)' }; 
+    if (dailyAvg >= 3) return { background: 'var(--stat-red-1)', color: 'var(--stat-text-dark)' }; 
+    if (dailyAvg > 0) return { background: 'var(--stat-red-2)', color: 'var(--stat-text-dark)' }; 
+    return { background: 'var(--stat-red-dark)', color: 'var(--stat-text-light)' }; 
   };
 
   const handleDragStart = (e, index) => {

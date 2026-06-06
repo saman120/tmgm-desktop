@@ -70,3 +70,11 @@
     margin: 0 24px;
   }
   
+.header {
+  color: var(--text-main);
+}
+
+.header-divider {
+  /* If you have a divider line at the bottom of the header */
+  border-bottom: 1px solid var(--divider); 
+}

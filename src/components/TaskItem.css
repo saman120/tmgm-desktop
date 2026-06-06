@@ -1,34 +1,37 @@
-/* src/components/TaskItem.css */
+/* =========================================
+   1. Base Task Item
+   ========================================= */
 .task-item {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: 4px;
-    padding: 2px;
-    margin-bottom: 8px;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    cursor: default;
-  }
-  
-  .task-item:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    background: rgba(255, 255, 255, 0.95);
-  }
-  
-  .task-item.in-progress {
-    border-left: 4px solid #007AFF;
-    background: linear-gradient(135deg, rgba(240, 248, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 100%);
-  }
-  
-  .task-item.current-task {
-    border: 2px solid #007AFF;
-    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1), 0 8px 32px rgba(0, 122, 255, 0.2);
-  }
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 2px;
+  margin-bottom: 8px;
+  background: var(--card-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.task-item:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  /* Slight highlight using existing card variables */
+  filter: brightness(1.02);
+}
+
+.task-item.in-progress {
+  border-left: 4px solid var(--brand-primary, #007AFF);
+  background: linear-gradient(135deg, var(--phase-work-bg, rgba(240, 248, 255, 0.9)) 0%, var(--card-bg) 100%);
+}
+
+.task-item.current-task {
+  border: 2px solid var(--brand-primary, #007AFF);
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1), 0 8px 32px rgba(0, 122, 255, 0.2);
+}
 
 .task-item.completed {
   opacity: 0.95; 
@@ -36,212 +39,209 @@
 
 .task-item.completed .task-description {
   text-decoration: none; 
-  color: #1d1d1f;
+  color: var(--text-main);
 }
-  
-  .task-content {
-    flex: 1;
-    min-width: 0;
-  }
-  
-  .task-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-  }
-  
-  .task-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-  }
-  
-  .current-badge {
-    background: linear-gradient(135deg, #007AFF 0%, #0056D6 100%);
-    color: white;
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    animation: pulse 2s infinite;
-  }
-  
-  .task-time {
-    font-size: 12px;
-    color: #8e8e93;
-    font-weight: 500;
-  }
-  
-  .task-description-container {
-    display: flex;
-    flex-direction: row;
-  }
-  
-  .task-description {
-    font-size: 13px;
-    line-height: 1.5;
-    color: #1d1d1f;
-    word-wrap: break-word;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-    cursor: pointer;
-  }
-  
-  .task-description:hover {
-    background: rgba(0, 0, 0, 0.05);
-  }
-  
-  .task-description-edit {
-    width: 100%;
-    font-size: 16px;
-    line-height: 1.5;
-    padding: 4px 8px;
-    border: 2px solid #007AFF;
-    border-radius: 4px;
-    background: white;
-    color: #1d1d1f;
-    font-family: inherit;
-    outline: none;
-  }
-  
-  .task-actions {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 4px;
-  }
 
-  .task-actions-right {
-    position: absolute;
-    right: 4px;
-    top: 4px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 4px;
-    z-index: 10;
-    opacity: 1;
-  }
-  
-  .status-button {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    border: none;
-    border-radius:4px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-width: 90px;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  .delete-button {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px;
-    border: none;
-    border-radius:4px;
-    font-size: 14px;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    justify-content: center;
-    opacity: 0.1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-  .delete-button:hover {
-    opacity: 1;
-  }
-  
-  .status-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  
-  .status-button:active {
-    transform: translateY(0);
-  }
-  
-  .status-button.pending {
-    background: linear-gradient(135deg, #FF9500 0%, #E6860E 100%);
-    color: white;
-  }
-  
-  .status-button.in-progress {
-    background: linear-gradient(135deg, #007AFF 0%, #0056D6 100%);
-    color: white;
-  }
-  
-  .status-button.completed {
-    background: linear-gradient(135deg, #34C759 0%, #2FB351 100%);
-    color: white;
-  }
-  
-  .status-button.hold {
-    background: linear-gradient(135deg, #6e6e6e 0%, #696969 100%);
-    color: white;
-  }
-  
-  .status-icon {
-    font-size: 12px;
-  }
-  
-  .status-text {
-    font-size: 12px;
-    font-weight: 600;
-  }
-  
-  
-  /* High contrast mode */
-  @media (prefers-contrast: high) {
-    .task-item {
-      border: 2px solid #000;
-    }
-    
-    .task-item.in-progress {
-      border-left: 6px solid #0000ff;
-    }
-    
-    .status-button.pending {
-      background: #ff6600;
-    }
-    
-    .status-button.in-progress {
-      background: #0000ff;
-    }
-    
-    .status-button.completed {
-      background: #008000;
-    }
-  }
-/* NEW: Drag and Drop Styles */
+/* =========================================
+   2. Content & Typography
+   ========================================= */
+.task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.task-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.current-badge {
+  background: linear-gradient(135deg, var(--brand-primary, #007AFF) 0%, var(--brand-primary-dark, #0056D6) 100%);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  animation: pulse 2s infinite;
+}
+
+.task-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.task-description-container {
+  display: flex;
+  flex-direction: row;
+}
+
+.task-description {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-main);
+  word-wrap: break-word;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.task-description:hover {
+  background: var(--hover-bg);
+}
+
+.task-description-edit {
+  width: 100%;
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  border: 2px solid var(--brand-primary, #007AFF);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-main);
+  font-family: inherit;
+  outline: none;
+}
+
+/* =========================================
+   3. Actions & Buttons
+   ========================================= */
+.task-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-actions-right {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+  opacity: 1;
+}
+
+.status-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 90px;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.status-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-button:active {
+  transform: translateY(0);
+}
+
+/* Badge Gradients */
+.status-button.pending { background: linear-gradient(135deg, #FF9500 0%, #E6860E 100%); color: white; }
+.status-button.in-progress { background: linear-gradient(135deg, var(--brand-primary, #007AFF) 0%, var(--brand-primary-dark, #0056D6) 100%); color: white; }
+.status-button.completed { background: linear-gradient(135deg, #34C759 0%, #2FB351 100%); color: white; }
+.status-button.hold { background: linear-gradient(135deg, #6e6e6e 0%, #696969 100%); color: white; }
+
+.status-icon { font-size: 12px; }
+.status-text { font-size: 12px; font-weight: 600; }
+
+.delete-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  justify-content: center;
+  opacity: 0.1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.delete-button:hover {
+  opacity: 1;
+}
+
+/* Count Buttons */
+.count-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.2;
+  padding: 2px 6px;
+  border: 1px solid var(--divider);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--card-bg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none; 
+}
+
+.count-button-highlight { opacity: 0.8; }
+
+.count-button:hover {
+  background: var(--hover-bg);
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+.count-button:active {
+  transform: scale(0.95);
+}
+
+/* =========================================
+   4. Drag & Drop
+   ========================================= */
 .drag-handle {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4px 2px;
-  color: #8e8e93; /* Soft gray color for the icon */
+  color: var(--text-muted); 
   cursor: grab;
   user-select: none;
   opacity: 0.3;
   transition: opacity 0.2s ease, color 0.2s ease;
   height: 100%;
-  margin-top: 2px; /* Aligns visually with the text/status icon */
+  margin-top: 2px; 
 }
 
 .task-item:hover .drag-handle {
   opacity: 1;
-  color: #1d1d1f; /* Darkens on hover to show it's interactive */
+  color: var(--text-main); 
 }
 
 .drag-handle:active {
@@ -250,107 +250,45 @@
 
 .task-item.dragging {
   opacity: 0.4;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--card-bg);
   box-shadow: none;
   transform: scale(0.98);
-  border: 1px dashed #007AFF;
+  border: 1px dashed var(--brand-primary, #007AFF);
 }
 
-/* NEW: Dynamic Animated Drop Zones */
+/* Drop Zones */
+.task-item.drag-over-top { padding-top: 52px; position: relative; }
+.task-item.drag-over-bottom { padding-bottom: 52px; position: relative; }
 
-/* Space above the target */
-.task-item.drag-over-top {
-  padding-top: 52px;
-  position: relative;
-}
-
-.task-item.drag-over-top::before {
-  content: 'Drop here';
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #007AFF;
-  font-size: 13px;
-  font-weight: 600;
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  right: 4px;
-  height: 44px;
-  background: rgba(0, 122, 255, 0.05);
-  border: 2px dashed #007AFF;
-  border-radius: 4px;
-  pointer-events: none; /* Crucial: stops the placeholder from breaking hover logic */
-}
-
-/* Space below the target */
-.task-item.drag-over-bottom {
-  padding-bottom: 52px;
-  position: relative;
-}
-
+.task-item.drag-over-top::before,
 .task-item.drag-over-bottom::after {
   content: 'Drop here';
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #007AFF;
+  color: var(--brand-primary, #007AFF);
   font-size: 13px;
   font-weight: 600;
   position: absolute;
-  bottom: 4px;
   left: 4px;
   right: 4px;
   height: 44px;
   background: rgba(0, 122, 255, 0.05);
-  border: 2px dashed #007AFF;
+  border: 2px dashed var(--brand-primary, #007AFF);
   border-radius: 4px;
-  pointer-events: none;
+  pointer-events: none; 
 }
 
-/* NEW: Counter Button Styles */
-.count-button {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  opacity: 0.2;
-  padding: 2px 6px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 4px;
-  font-size: 11px;
-  color: #8e8e93;
-  background: rgba(255, 255, 255, 0.5);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none; /* Prevents text highlighting on double-click */
-}
+.task-item.drag-over-top::before { top: 4px; }
+.task-item.drag-over-bottom::after { bottom: 4px; }
 
-.count-button-highlight {
-  opacity: 0.8;
-}
-
-.count-button:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #1d1d1f;
-  border-color: rgba(0, 0, 0, 0.15);
-}
-
-.count-button:active {
-  transform: scale(0.95);
-}
-
-@media (prefers-contrast: high) {
-  .count-button { 
-    border: 1px solid #000; 
-    color: #000; 
-  }
-}
-
+/* =========================================
+   5. Remarks Modal
+   ========================================= */
 .remarks-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   z-index: 9999;
   display: flex;
@@ -359,12 +297,12 @@
 }
 
 .remarks-modal {
-  background: white;
+  background: var(--modal-bg);
   width: 90%;
   max-width: 380px;
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -374,7 +312,7 @@
 .remarks-modal h3 {
   margin: 0;
   font-size: 16px;
-  color: #1d1d1f;
+  color: var(--text-main);
 }
 
 .remarks-list {
@@ -388,117 +326,17 @@
 
 .no-remarks {
   font-size: 13px;
-  color: #8e8e93;
+  color: var(--text-muted);
   font-style: italic;
   margin: 0;
 }
 
 .remark-item {
-  background: #f5f5f7;
+  background: var(--bg-primary);
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 13px;
-  color: #1d1d1f;
-  line-height: 1.4;
-  word-wrap: break-word;
-}
-
-.remark-input-container {
-  display: flex;
-  gap: 8px;
-}
-
-.remark-input-container input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #c7c7cc;
-  border-radius: 6px;
-  font-size: 13px;
-  outline: none;
-}
-
-.remark-input-container input:focus {
-  border-color: #007AFF;
-}
-
-.remark-input-container button {
-  padding: 0 16px;
-  background: #f5f5f7;
-  border: 1px solid #c7c7cc;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1d1d1f;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.remark-input-container button:not(:disabled):hover {
-  background: #e5e5ea;
-}
-
-.remark-input-container button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.remarks-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.remarks-modal-actions button {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.remarks-modal-actions .cancel-btn {
-  background: transparent;
-  color: #8e8e93;
-}
-
-.remarks-modal-actions .cancel-btn:hover {
-  background: #f5f5f7;
-  color: #1d1d1f;
-}
-
-.remarks-modal-actions .save-btn {
-  background: #007AFF;
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
-}
-
-.remarks-modal-actions .save-btn:hover {
-  background: #0056D6;
-}
-
-@media (prefers-contrast: high) {
-  .remarks-modal {
-    border: 2px solid #000;
-  }
-  .remark-item, .remark-input-container input {
-    border: 1px solid #000;
-  }
-  .remarks-modal-actions .save-btn {
-    background: #000;
-    color: #fff;
-  }
-}
-
-/* Update existing remark-item to handle the new delete button */
-.remark-item {
-  background: #f5f5f7;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #1d1d1f;
+  color: var(--text-main);
   line-height: 1.4;
   word-wrap: break-word;
   display: flex;
@@ -526,26 +364,104 @@
   opacity: 1;
 }
 
-/* NEW: Textarea Styles */
+.remark-input-container {
+  display: flex;
+  gap: 8px;
+}
+
+.remark-input-container input,
 .remark-textarea {
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid #c7c7cc;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-main);
   border-radius: 6px;
   font-size: 13px;
   outline: none;
+}
+
+.remark-textarea {
   font-family: inherit;
   resize: vertical;
   min-height: 40px;
   max-height: 120px;
 }
 
+.remark-input-container input:focus,
 .remark-textarea:focus {
-  border-color: #007AFF;
+  border-color: var(--brand-primary, #007AFF);
 }
 
+.remark-input-container button {
+  padding: 0 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remark-input-container button:not(:disabled):hover {
+  background: var(--hover-bg);
+}
+
+.remark-input-container button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remarks-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.remarks-modal-actions button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.remarks-modal-actions .cancel-btn {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.remarks-modal-actions .cancel-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-main);
+}
+
+.remarks-modal-actions .save-btn {
+  background: var(--brand-primary, #007AFF);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.remarks-modal-actions .save-btn:hover {
+  background: var(--brand-primary-dark, #0056D6);
+}
+
+/* =========================================
+   6. High Contrast Mode
+   ========================================= */
 @media (prefers-contrast: high) {
-  .remark-textarea, .suggestion-pill {
-    border: 1px solid #000;
-  }
+  .task-item { border: 2px solid #000; }
+  .task-item.in-progress { border-left: 6px solid #0000ff; }
+  .status-button.pending { background: #ff6600; }
+  .status-button.in-progress { background: #0000ff; }
+  .status-button.completed { background: #008000; }
+  .count-button { border: 1px solid #000; color: #000; }
+  .remarks-modal { border: 2px solid #000; }
+  .remark-item, .remark-input-container input, .remark-textarea { border: 1px solid #000; }
+  .remarks-modal-actions .save-btn { background: #000; color: #fff; }
 }

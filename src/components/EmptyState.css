@@ -19,14 +19,14 @@
   .empty-state-title {
     font-size: 28px;
     font-weight: 700;
-    color: #1d1d1f;
+    color: var(--text-main);
     margin-bottom: 12px;
     letter-spacing: -0.5px;
   }
   
   .empty-state-description {
     font-size: 16px;
-    color: #8e8e93;
+    color: var(--text-muted);
     line-height: 1.6;
     max-width: 480px;
     margin-bottom: 32px;
@@ -46,7 +46,7 @@
   }
   
   .empty-state-tips {
-    background: rgba(255, 255, 255, 0.8);
+    background: var(--card-bg);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 16px;
@@ -58,7 +58,7 @@
   .empty-state-tips h4 {
     font-size: 16px;
     font-weight: 600;
-    color: #1d1d1f;
+    color: var(--text-main);
     margin-bottom: 16px;
     display: flex;
     align-items: center;

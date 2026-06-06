@@ -30,7 +30,7 @@ class ErrorBoundary extends React.Component {
           height: '100vh',
           padding: '20px',
           textAlign: 'center',
-          background: '#f5f5f7'
+          background: 'var(--bg-primary)'
         }}>
           <h2 style={{ color: '#c62828', marginBottom: '16px' }}>
             Something went wrong

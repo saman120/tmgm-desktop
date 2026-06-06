@@ -203,27 +203,27 @@ const TaskItem = ({
   const getStatusIcon = (status) => {
     return status === 'completed' ? '✔' : (elapsedMinutes || '');
   };
-
+  
   const completedStyle = useMemo(() => {
     if (task.status !== 'completed') return {};
     
     const dC = task.delayCount || 0;
     const distC = task.distractionCount || 0;
 
-    let delayColor = 'rgba(235, 248, 235, 0.9)'; 
-    if (dC < 0.5) delayColor = 'rgba(247, 227, 250, 0.9)'; 
-    else if (dC >= 2 && dC <= 5) delayColor = 'rgba(255, 180, 180, 0.9)'; 
-    else if (dC > 5 && dC <= 10) delayColor = 'rgba(255, 120, 120, 0.9)'; 
-    else if (dC > 10) delayColor = 'rgba(255, 70, 70, 0.9)'; 
+    let delayColor = 'var(--comp-green)'; 
+    if (dC < 0.5) delayColor = 'var(--comp-purple)'; 
+    else if (dC >= 2 && dC <= 5) delayColor = 'var(--comp-red-1)'; 
+    else if (dC > 5 && dC <= 10) delayColor = 'var(--comp-red-2)'; 
+    else if (dC > 10) delayColor = 'var(--comp-red-3)'; 
 
-    let distColor = 'rgba(235, 248, 235, 0.9)'; 
-    if (distC > 1 && distC <= 5) distColor = 'rgba(255, 245, 180, 0.9)'; 
-    else if (distC > 5 && distC <= 10) distColor = 'rgba(255, 220, 120, 0.9)'; 
-    else if (distC > 10) distColor = 'rgba(255, 190, 70, 0.9)'; 
+    let distColor = 'var(--comp-green)'; 
+    if (distC > 1 && distC <= 5) distColor = 'var(--comp-yellow-1)'; 
+    else if (distC > 5 && distC <= 10) distColor = 'var(--comp-yellow-2)'; 
+    else if (distC > 10) distColor = 'var(--comp-yellow-3)'; 
 
     return { 
       background: `linear-gradient(135deg, ${delayColor} 0%, ${distColor} 100%)`,
-      color: '#1d1d1f' 
+      color: 'var(--text-main)' 
     };
   }, [task.status, task.delayCount, task.distractionCount]);
 

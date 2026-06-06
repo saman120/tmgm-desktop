@@ -1,106 +1,48 @@
-/* NEW: Time Dividers for Completed Tasks */
-.time-divider {
+/* =========================================
+   1. Layout & Containers
+   ========================================= */
+.task-list-container {
   display: flex;
+  flex-direction: column;
+  height: 100%; 
+  max-height: 100vh; 
+  overflow: hidden; 
+}
+
+.task-list-header {
+  display: flex;
+  position: relative;
+  justify-content: center;
   align-items: center;
-  text-align: center;
-  margin: 16px 0 8px 0;
+  min-height: 44px;
 }
 
-.time-divider::before,
-.time-divider::after {
-  content: '';
+.task-list {
   flex: 1;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 40px;
+  padding-right: 4px;
 }
 
-.time-divider-text {
-  padding: 0 12px;
-  color: #8e8e93;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+/* Custom Scrollbar */
+.task-list::-webkit-scrollbar {
+  width: 6px;
 }
-
-/* Ensure the divider behaves in high-contrast mode */
-@media (prefers-contrast: high) {
-  .time-divider::before,
-  .time-divider::after {
-    border-bottom: 1px solid #000;
-  }
-  .time-divider-text {
-    color: #000;
-  }
-}
-
-/* NEW: Toggle Switch Styles */
-.toggle-container {
-  display: flex;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 8px;
-  padding: 3px;
-  margin: 0 auto; /* Centers the toggle if header uses flex */
-}
-
-.toggle-btn {
-  padding: 6px 16px;
-  border: none;
+.task-list::-webkit-scrollbar-track {
   background: transparent;
-  font-size: 13px;
-  font-weight: 600;
-  color: #6b6bec;
-  cursor: pointer;
-  transition: all 0.2s ease;
+}
+.task-list::-webkit-scrollbar-thumb {
+  background: var(--divider);
+  border-radius: 4px;
+}
+.task-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
-.toggle-btn:hover:not(.active) {
-  color: #1d1d1f;
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.toggle-btn.active {
-  background: white;
-  color: #1d1d1f;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-/* Fallback message when filter leaves list empty */
-.empty-filter-state {
-  text-align: center;
-  padding: 32px 20px;
-  color: #8e8e93;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-/* Ensure Toggle behaves in high-contrast mode */
-@media (prefers-contrast: high) {
-  .toggle-container {
-    border: 1px solid #000;
-    background: transparent;
-  }
-  .toggle-btn {
-    color: #000;
-  }
-  .toggle-btn.active {
-    background: #000;
-    color: #fff;
-  }
-}
-
-.time-divider-text {
-  padding: 4px 16px;
-  color: #8e8e93;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05); /* Adds a nice depth to the pill */
-  transition: all 0.3s ease;
-}
-
-/* Update to ensure flex behaves well with multiple dividers */
+/* =========================================
+   2. Time Dividers
+   ========================================= */
 .time-divider {
   display: flex;
   align-items: center;
@@ -109,20 +51,26 @@
 }
 
 .day-divider {
-  margin: 32px 0 16px 0; /* Add more space above a new day */
+  margin: 32px 0 16px 0;
 }
 
-/* Base pill styling */
+.time-divider::before,
+.time-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--divider);
+}
+
 .time-divider-text {
   padding: 4px 16px;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
 
-/* Day pills are larger and bolder */
 .day-text {
   font-size: 13px;
   letter-spacing: 0.8px;
@@ -130,67 +78,49 @@
   border-radius: 16px;
 }
 
-/* Hour pills are smaller */
 .hour-text {
   font-size: 10px;
   letter-spacing: 0.5px;
   opacity: 0.9;
 }
 
-.task-list-container {
-  display: flex;
-  flex-direction: column;
-  /* Ensure the container only takes up the available window height */
-  height: 100%; 
-  max-height: 100vh; 
-  overflow: hidden; 
-}
-
-.task-list {
-  flex: 1; /* Tells the list to take up all remaining space below the header */
-  overflow-y: auto; /* THIS IS THE MAGIC LINE: Enables vertical scrolling! */
-  overflow-x: hidden;
-  padding-bottom: 40px; /* Gives some comfortable breathing room at the very bottom */
-  padding-right: 4px; /* Prevents the scrollbar from overlapping your tasks */
-}
-
-/* Optional: Clean, Mac-style custom scrollbar for your Electron app */
-.task-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.task-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.task-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: 4px;
-}
-
-.task-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* NEW: Header & Stats Positioning Styles */
-.task-list-header {
-  display: flex;
-  position: relative;
-  justify-content: center;
-  align-items: center;
-  min-height: 44px; /* Ensures header doesn't collapse awkwardly */
-}
-
-/* Ensure the toggle doesn't break flex alignment */
+/* =========================================
+   3. Toggle Switch
+   ========================================= */
 .toggle-container {
   display: flex;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--hover-bg);
   border-radius: 8px;
   padding: 3px;
-  margin: 0; /* Removed margin: 0 auto so flexbox can handle centering */
+  margin: 0;
   z-index: 2;
 }
 
+.toggle-btn {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn:hover:not(.active) {
+  color: var(--text-main);
+  background: var(--hover-bg);
+}
+
+.toggle-btn.active {
+  background: var(--input-bg);
+  color: var(--text-main);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* =========================================
+   4. Stats & Pills
+   ========================================= */
 .current-stats-container {
   position: absolute;
   right: 16px;
@@ -200,14 +130,14 @@
 }
 
 .stat-pill {
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--card-bg);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--divider);
   padding: 4px 10px;
   border-radius: 12px;
   font-size: 11px;
   font-weight: 600;
-  color: #1d1d1f;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -221,91 +151,36 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@media (prefers-contrast: high) {
-  .stat-pill {
-    border: 1px solid #000;
-    color: #000;
-    background: transparent;
-  }
-}
-
-/* NEW: Header & Stats Positioning Styles */
-.task-list-header {
-  display: flex;
-  position: relative;
-  justify-content: center;
-  align-items: center;
-  min-height: 44px;
-}
-
-.toggle-container {
-  display: flex;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 8px;
-  padding: 3px;
-  margin: 0; 
-  z-index: 2;
-}
-
-.current-stats-container {
-  position: absolute;
-  right: 16px;
-  display: flex;
-  gap: 6px;
-  z-index: 1;
-}
-
-/* Base pill styles */
-.stat-pill {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #1d1d1f;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  cursor: default;
-  transition: all 0.3s ease;
-}
-
 .stat-pill.phase-indicator {
   padding: 4px 12px;
   letter-spacing: 0.3px;
 }
 
-/* Phase-specific colors! */
-.current-stats-container.phase-rest .stat-pill {
-  background: rgba(215, 255, 215, 0.9); /* Light green for Rest */
-  border-color: rgba(100, 200, 100, 0.3);
+/* Phase Colors (Targeting ONLY the phase indicator pill) */
+.current-stats-container.phase-rest .stat-pill.phase-indicator {
+  background: var(--phase-rest-bg);
+  border-color: var(--phase-rest-border);
 }
 
-.current-stats-container.phase-planning .stat-pill {
-  background: rgba(255, 245, 215, 0.9); /* Warm yellow/orange for Plan */
-  border-color: rgba(220, 180, 100, 0.3);
+.current-stats-container.phase-planning .stat-pill.phase-indicator {
+  background: var(--phase-plan-bg);
+  border-color: var(--phase-plan-border);
 }
 
-.current-stats-container.phase-working .stat-pill {
-  background: rgba(240, 248, 255, 0.9); /* Crisp light blue for Work */
-  border-color: rgba(0, 122, 255, 0.2);
+.current-stats-container.phase-working .stat-pill.phase-indicator {
+  background: var(--phase-work-bg);
+  border-color: var(--phase-work-border);
 }
 
-.stat-pill:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+/* =========================================
+   5. Utilities & Animations
+   ========================================= */
+.empty-filter-state {
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .fade-in {
@@ -317,7 +192,28 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* =========================================
+   6. High Contrast Mode
+   ========================================= */
 @media (prefers-contrast: high) {
+  .time-divider::before,
+  .time-divider::after {
+    border-bottom: 1px solid #000;
+  }
+  .time-divider-text {
+    color: #000;
+  }
+  .toggle-container {
+    border: 1px solid #000;
+    background: transparent;
+  }
+  .toggle-btn {
+    color: #000;
+  }
+  .toggle-btn.active {
+    background: #000;
+    color: #fff;
+  }
   .stat-pill {
     border: 1px solid #000 !important;
     color: #000 !important;
