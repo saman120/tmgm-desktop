@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import DaySummaryForm from './DaySummaryForm'; 
-import { taskAPI } from '../services/api'; // NEW: Import API to handle the increment
+import { taskAPI } from '../services/api';
 import './TaskList.css';
 
 const playBlipSound = () => {
@@ -41,8 +41,10 @@ const TaskList = ({
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [summaryModalDay, setSummaryModalDay] = useState(null); 
   
-  // NEW: Loading state for breathing button
   const [isBreathingLoading, setIsBreathingLoading] = useState(false);
+  
+  // NEW: Track the last hour the user breathed. Check local storage so it persists across reloads!
+  const [lastBreathedHour, setLastBreathedHour] = useState(localStorage.getItem('lastBreathedHour') || null);
 
   useEffect(() => {
     const intervalId = setInterval(() => setCurrentTime(new Date()), 10000); 
@@ -50,6 +52,7 @@ const TaskList = ({
   }, []);
 
   const currentMinute = currentTime.getMinutes();
+  const currentHourKey = `${toISODate(currentTime)}-${currentTime.getHours()}`;
 
   useEffect(() => {
     if (currentMinute % 5 === 0 && lastPlayedMinuteRef.current !== currentMinute) {
@@ -179,23 +182,24 @@ const TaskList = ({
     setDragOverIndex(null); 
   };
 
-  // NEW: Handler for Breathing Exercise Button
   const handleBreathingExercise = async () => {
     const today = toISODate(currentTime);
     setIsBreathingLoading(true);
     try {
-      // 1. Fetch current summary (if exists)
       const currentSummary = await taskAPI.getDaySummaryByDate(today);
       const dataToUpdate = currentSummary || {};
       
-      // 2. Increment value
       await taskAPI.updateDaySummaryByDate(today, {
         ...dataToUpdate,
         breathingExec: (dataToUpdate.breathingExec || 0) + 1
       });
       
-      // 3. Audio feedback
       playBlipSound();
+      
+      // NEW: Lock the button for the current hour and save to local storage
+      setLastBreathedHour(currentHourKey);
+      localStorage.setItem('lastBreathedHour', currentHourKey);
+
     } catch (err) {
       console.error('Failed to log breathing exercise:', err);
     } finally {
@@ -414,6 +418,8 @@ const pushHourDivider = (dateObj, hourKey) => {
     }
   };
 
+  const canBreatheThisHour = lastBreathedHour !== currentHourKey;
+
   return (
     <div className="task-list-container">
       <div className="task-list-header">
@@ -435,18 +441,18 @@ const pushHourDivider = (dateObj, hourKey) => {
 
         <div className={`current-stats-container phase-${phase} fade-in`} onClick={() => playBlipSound()} title="Click for sound alert">
           
-          {/* NEW: Breathing Exercise Button - Only shows during 'rest' */}
-          {phase === 'rest' && (
+          {/* NEW: Breathing Exercise Button - Only shows during 'rest' AND if not already clicked this hour */}
+          {phase === 'rest' && canBreatheThisHour && (
             <button 
               className="stat-pill breathing-btn"
               onClick={(e) => {
-                e.stopPropagation(); // Prevents playBlipSound from firing twice
+                e.stopPropagation();
                 handleBreathingExercise();
               }}
               disabled={isBreathingLoading}
               title="Log Breathing Exercise (+1)"
             >
-              {isBreathingLoading ? '⏳...' : '🫁 Br'}
+              {isBreathingLoading ? '⏳...' : '🫁 Breathe'}
             </button>
           )}
 
