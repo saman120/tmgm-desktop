@@ -91,7 +91,7 @@ export const taskAPI = {
   // Update day summary by date
   async updateDaySummaryByDate(date, daySummaryData) {
     return await apiRequest(`/api/day-summaries/${date}`, {
-      method: 'POST',
+      method: 'PUT',
       body: JSON.stringify(daySummaryData)
     });
   },
