@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
+import DaySummaryForm from './DaySummaryForm'; // NEW
 import './TaskList.css';
 
 const playBlipSound = () => {
   try {
-    // FIX: Dynamically construct the path for Electron's file:// protocol
     const soundPath = process.env.PUBLIC_URL + '/beep.mp3';
     const audio = new Audio(soundPath); 
     audio.play().catch(e => console.warn("Audio play blocked:", e));
@@ -14,6 +14,8 @@ const playBlipSound = () => {
     console.error("Failed to play audio:", e);
   }
 };
+
+const toISODate = (date) => date.toISOString().split('T')[0];
 
 const TaskList = ({ 
   tasks,
@@ -25,7 +27,9 @@ const TaskList = ({
   onReorder,
   onTaskUpdate,
   onShowRecentToggle,
-  showRecent
+  showRecent,
+  daySummaries = {}, // Passed down from App.js
+  onSaveDaySummary // Passed down from App.js
 }) => {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -33,8 +37,8 @@ const TaskList = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const lastPlayedMinuteRef = useRef(new Date().getMinutes());
 
-  // --- NEW: State to track which groups are collapsed ---
   const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [summaryModalDay, setSummaryModalDay] = useState(null); // NEW
 
   useEffect(() => {
     const intervalId = setInterval(() => setCurrentTime(new Date()), 10000); 
@@ -172,10 +176,8 @@ const TaskList = ({
   };
 
 
-  // --- NEW: Procedural Render Array to manually inject empty gap days ---
   const renderElements = [];
 
-  // Determine the cutoff threshold (so we know when to stop injecting empty days)
   let currentDayIter = new Date(currentTime);
   currentDayIter.setHours(0, 0, 0, 0);
   
@@ -190,7 +192,6 @@ const TaskList = ({
          }
       });
   } else {
-      // Default cutoff is 14 days ago
       oldestDateMs = currentDayIter.getTime() - (14 * 24 * 60 * 60 * 1000);
   }
   const cutoffDay = new Date(oldestDateMs);
@@ -199,12 +200,11 @@ const TaskList = ({
   let lastDayKey = null;
   let lastHourKey = null;
   
-  // Helper functions to push collapsible dividers
   const pushDayDivider = (dateObj, dayKey) => {
     const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
     const isToday = dayKey === currentTime.toLocaleDateString();
-    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; // NEW
+    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; 
     
     let hoursElapsed = 8; 
     if (isToday) {
@@ -214,20 +214,33 @@ const TaskList = ({
     }
 
     const dailyAvg = dayStats.totalCompleted / hoursElapsed;
-    const dayStyle = getDailyStyle(dailyAvg, isWeekend); // PASSED FLAG
+    const dayStyle = getDailyStyle(dailyAvg, isWeekend); 
     const isCollapsed = collapsedGroups[dayKey] ?? !isToday;
 
     const statsText = ` • ${dayStats.totalCompleted} slots (${dailyAvg.toFixed(1)}/hr)`;
+    const hasSummary = !!daySummaries[dayKey];
 
     renderElements.push(
         <div className="time-divider day-divider" key={`day-${dayKey}`}>
             <span 
               className="time-divider-text day-text" 
-              style={{ ...dayStyle, cursor: 'pointer', userSelect: 'none' }} 
+              style={{ ...dayStyle, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }} 
               onClick={() => toggleGroup(dayKey, !isToday)}
               title={`Daily Avg: ${dailyAvg.toFixed(1)} slots/hr (over ${hoursElapsed.toFixed(1)} hrs)`}
             >
-                {isCollapsed ? '▶ ' : '▼ '} {displayDate}{statsText}
+                <span>{isCollapsed ? '▶ ' : '▼ '} {displayDate}{statsText}</span>
+                
+                {/* NEW: Edit Summary Button */}
+                <button 
+                  className="day-summary-edit-btn"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevents collapsing the day
+                    setSummaryModalDay(dayKey);
+                  }}
+                  title={hasSummary ? "Edit Day Summary" : "Add Day Summary"}
+                >
+                  {hasSummary ? '📝' : '➕'}
+                </button>
             </span>
         </div>
     );
@@ -243,7 +256,6 @@ const pushHourDivider = (dateObj, hourKey) => {
   const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
   const isCurrentHour = hourKey === `${currentTime.toLocaleDateString()}-${currentTime.getHours()}`;
   
-  // NEW: Calculate if it's the weekend OR outside 9 AM - 7 PM
   const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
   const isOffHour = hour < 9 || hour >= 19; 
   const isOffTime = isWeekend || isOffHour;
@@ -253,15 +265,12 @@ const pushHourDivider = (dateObj, hourKey) => {
       const m = currentTime.getMinutes();
       expectedSlots = m < 15 ? 1 : Math.floor((m - 15) / 5) + 1;
   } else if (isOffTime) {
-      // No "expected" slots during off hours, but we can set it to 1 for display purity
       expectedSlots = isCurrentHour ? 1 : hourStats.totalCompleted || 1;
   }
 
-  // Pass the combined flag here
   const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots, isOffTime); 
   const isCollapsed = collapsedGroups[hourKey] ?? false;
 
-  // Adjust text slightly so it doesn't say "0/1 slots" during off hours if empty
   const statsText = isOffTime 
     ? ` • ${hourStats.totalCompleted} slots` 
     : ` • ${hourStats.totalCompleted}/${expectedSlots} slots`;
@@ -287,7 +296,6 @@ const pushHourDivider = (dateObj, hourKey) => {
           dragOverClass = draggedIndex < index ? 'drag-over-bottom' : 'drag-over-top';
       }
 
-      // 1. Immediately Render Active Tasks
       if (task.status !== 'completed') {
           renderElements.push(
               <TaskItem
@@ -310,7 +318,6 @@ const pushHourDivider = (dateObj, hourKey) => {
           return;
       }
 
-      // 2. Manage Completed Tasks Hierarchy
       const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
       const taskDate = new Date(timestamp || currentTime);
       
@@ -321,33 +328,27 @@ const pushHourDivider = (dateObj, hourKey) => {
       const taskDayStart = new Date(taskDate);
       taskDayStart.setHours(0, 0, 0, 0);
 
-      // Inject completely empty days to fill chronological gaps
       while (currentDayIter > taskDayStart) {
-          const emptyDayKey = currentDayIter.toLocaleDateString();
+          const emptyDayKey = currentDayIter.toISOString().split('T')[0];
           if (emptyDayKey !== lastDayKey) {
               pushDayDivider(currentDayIter, emptyDayKey);
           }
           currentDayIter.setDate(currentDayIter.getDate() - 1);
       }
 
-      // Push the active day divider
       if (dayKey !== lastDayKey) {
           pushDayDivider(taskDate, dayKey);
           currentDayIter.setDate(currentDayIter.getDate() - 1);
       }
 
-      // NEW: Ensure loop respects the "Not Today" default collapse rule
       const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== currentTime.toLocaleDateString());
 
-      // Push hour divider (only if the parent Day isn't collapsed)
       if (!isDayCollapsed && hourKey !== lastHourKey) {
           pushHourDivider(taskDate, hourKey);
       }
 
-      // NEW: Ensure loop respects the Hour default rule
       const isHourCollapsed = collapsedGroups[hourKey] ?? false;
 
-      // Finally, push the TaskItem itself (if neither parent is collapsed)
       if (!isDayCollapsed && !isHourCollapsed) {
           renderElements.push(
               <TaskItem
@@ -370,7 +371,6 @@ const pushHourDivider = (dateObj, hourKey) => {
       }
   });
 
-  // 3. Cleanup Trailing Empty Days
   while (currentDayIter >= cutoffDay) {
       const emptyDayKey = currentDayIter.toLocaleDateString();
       if (emptyDayKey !== lastDayKey) {
@@ -378,6 +378,15 @@ const pushHourDivider = (dateObj, hourKey) => {
       }
       currentDayIter.setDate(currentDayIter.getDate() - 1);
   }
+
+  // Handle Form Submission
+  const handleSummarySubmit = (date, formData) => {
+    if (onSaveDaySummary) {
+      onSaveDaySummary(date, formData);
+    } else {
+      console.warn("onSaveDaySummary not implemented in App.js yet!", date, formData);
+    }
+  };
 
   return (
     <div className="task-list-container">
@@ -416,6 +425,13 @@ const pushHourDivider = (dateObj, hourKey) => {
       <div className="task-list">
         {renderElements}
       </div>
+
+      {/* NEW: Render the modal */}
+      <DaySummaryForm 
+        isOpen={!!summaryModalDay}
+        date={summaryModalDay}
+        onClose={() => setSummaryModalDay(null)}
+      />
     </div>
   );
 };

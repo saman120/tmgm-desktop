@@ -81,7 +81,20 @@ export const taskAPI = {
     return await apiRequest(`/api/tasks/${id}`, {
       method: 'DELETE'
     });
-  }
+  },
+
+  // Get day summary by date
+  async getDaySummaryByDate(date) {
+    return await apiRequest(`/api/day-summaries/${date}`);
+  },
+
+  // Update day summary by date
+  async updateDaySummaryByDate(date, daySummaryData) {
+    return await apiRequest(`/api/day-summaries/${date}`, {
+      method: 'POST',
+      body: JSON.stringify(daySummaryData)
+    });
+  },
 };
 
 // Export API utilities

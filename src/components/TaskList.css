@@ -220,3 +220,24 @@
     background: transparent !important;
   }
 }
+
+/* NEW: Day Summary Button */
+.day-summary-edit-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.4;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-left: 4px;
+}
+
+.day-summary-edit-btn:hover {
+  opacity: 1;
+  background: var(--hover-bg);
+}
