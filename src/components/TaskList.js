@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
-import DaySummaryForm from './DaySummaryForm'; // NEW
+import DaySummaryForm from './DaySummaryForm'; 
+import { taskAPI } from '../services/api'; // NEW: Import API to handle the increment
 import './TaskList.css';
 
 const playBlipSound = () => {
@@ -28,8 +29,8 @@ const TaskList = ({
   onTaskUpdate,
   onShowRecentToggle,
   showRecent,
-  daySummaries = {}, // Passed down from App.js
-  onSaveDaySummary // Passed down from App.js
+  daySummaries = {}, 
+  onSaveDaySummary 
 }) => {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -38,7 +39,10 @@ const TaskList = ({
   const lastPlayedMinuteRef = useRef(new Date().getMinutes());
 
   const [collapsedGroups, setCollapsedGroups] = useState({});
-  const [summaryModalDay, setSummaryModalDay] = useState(null); // NEW
+  const [summaryModalDay, setSummaryModalDay] = useState(null); 
+  
+  // NEW: Loading state for breathing button
+  const [isBreathingLoading, setIsBreathingLoading] = useState(false);
 
   useEffect(() => {
     const intervalId = setInterval(() => setCurrentTime(new Date()), 10000); 
@@ -175,6 +179,30 @@ const TaskList = ({
     setDragOverIndex(null); 
   };
 
+  // NEW: Handler for Breathing Exercise Button
+  const handleBreathingExercise = async () => {
+    const today = toISODate(currentTime);
+    setIsBreathingLoading(true);
+    try {
+      // 1. Fetch current summary (if exists)
+      const currentSummary = await taskAPI.getDaySummaryByDate(today);
+      const dataToUpdate = currentSummary || {};
+      
+      // 2. Increment value
+      await taskAPI.updateDaySummaryByDate(today, {
+        ...dataToUpdate,
+        breathingExec: (dataToUpdate.breathingExec || 0) + 1
+      });
+      
+      // 3. Audio feedback
+      playBlipSound();
+    } catch (err) {
+      console.error('Failed to log breathing exercise:', err);
+    } finally {
+      setIsBreathingLoading(false);
+    }
+  };
+
 
   const renderElements = [];
 
@@ -230,11 +258,10 @@ const TaskList = ({
             >
                 <span>{isCollapsed ? '▶ ' : '▼ '} {displayDate}{statsText}</span>
                 
-                {/* NEW: Edit Summary Button */}
                 <button 
                   className="day-summary-edit-btn"
                   onClick={(e) => {
-                    e.stopPropagation(); // Prevents collapsing the day
+                    e.stopPropagation(); 
                     setSummaryModalDay(dayKey);
                   }}
                   title={hasSummary ? "Edit Day Summary" : "Add Day Summary"}
@@ -379,7 +406,6 @@ const pushHourDivider = (dateObj, hourKey) => {
       currentDayIter.setDate(currentDayIter.getDate() - 1);
   }
 
-  // Handle Form Submission
   const handleSummarySubmit = (date, formData) => {
     if (onSaveDaySummary) {
       onSaveDaySummary(date, formData);
@@ -408,6 +434,22 @@ const pushHourDivider = (dateObj, hourKey) => {
         </div>
 
         <div className={`current-stats-container phase-${phase} fade-in`} onClick={() => playBlipSound()} title="Click for sound alert">
+          
+          {/* NEW: Breathing Exercise Button - Only shows during 'rest' */}
+          {phase === 'rest' && (
+            <button 
+              className="stat-pill breathing-btn"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevents playBlipSound from firing twice
+                handleBreathingExercise();
+              }}
+              disabled={isBreathingLoading}
+              title="Log Breathing Exercise (+1)"
+            >
+              {isBreathingLoading ? '⏳...' : '🫁 Br'}
+            </button>
+          )}
+
           <span className="stat-pill phase-indicator">
             {phase === 'rest' && '🛌 Rest'}
             {phase === 'planning' && '📝 Plan'}
@@ -426,7 +468,6 @@ const pushHourDivider = (dateObj, hourKey) => {
         {renderElements}
       </div>
 
-      {/* NEW: Render the modal */}
       <DaySummaryForm 
         isOpen={!!summaryModalDay}
         date={summaryModalDay}

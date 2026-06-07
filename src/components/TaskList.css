@@ -241,3 +241,34 @@
   opacity: 1;
   background: var(--hover-bg);
 }
+
+/* NEW: Breathing Exercise Button */
+.stat-pill.breathing-btn {
+  cursor: pointer;
+  background: var(--comp-green);
+  border-color: var(--stat-green-1);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.stat-pill.breathing-btn:hover:not(:disabled) {
+  background: var(--stat-green-1);
+  color: var(--text-main);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.15);
+}
+
+.stat-pill.breathing-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.stat-pill.breathing-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (prefers-contrast: high) {
+  .stat-pill.breathing-btn {
+    border: 2px solid #000 !important;
+  }
+}
