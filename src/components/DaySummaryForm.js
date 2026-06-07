@@ -3,21 +3,19 @@ import React, { useState, useEffect } from 'react';
 import './DaySummaryForm.css';
 import { taskAPI } from '../services/api';
 
-// Easily add or remove fields here
 const SUMMARY_FIELDS = [
   { id: 'morningBM', label: 'Morning B.M.', type: 'toggle', min: 1, max: 10, group: 'Morning' },
   { id: 'morningWalk', label: 'Morning Walk', type: 'toggle', min: 1, max: 10, group: 'Morning' },
-  { id: 'selfWork', label: 'Self work', type: 'toggle', min: 1, max: 10, group: 'Day' },
-  { id: 'newInvestment', label: 'New/Investment', type: 'toggle', min: 1, max: 10, group: 'Day' },
-  { id: 'foodHabit', label: 'Food habit', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
-  { id: 'morningRoutine', label: 'Morning routine', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
-  { id: 'bmLevel', label: 'B.M. level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
-  { id: 'freshnessLevel', label: 'Freshness level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
-  { id: 'stressLevel', label: 'Stress level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
-  { id: 'tirednessLevel', label: 'Tiredness level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
-  { id: 'healthLevel', label: 'Health level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
-  { id: 'breathingExec', label: 'Breathing exec', type: 'number', min: 1, max: 10, group: 'Day' },
-  { id: 'mm', label: 'MM', type: 'number', min: 1, max: 10, group: 'Other' },
+  { id: 'breathingExec', label: 'Breathing exec', type: 'numberReadOnly', min: 1, max: 10, group: 'Morning' },
+  { id: 'selfWork', label: 'Self work', type: 'toggle', min: 1, max: 10, group: 'Morning' },
+  { id: 'newInvestment', label: 'New/Investment', type: 'toggle', min: 1, max: 10, group: 'Morning' },
+  { id: 'redFlags', label: 'Red Flags (M)', type: 'toggle', min: 1, max: 10, group: 'Morning' },
+  { id: 'bmLevel', label: 'B.M. level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'foodHabit', label: 'Food habit', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'freshnessLevel', label: 'Freshness level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'stressLevel', label: 'Stress level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'tirednessLevel', label: 'Tiredness level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'healthLevel', label: 'Health level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
 ];
 
 const DaySummaryForm = ({ isOpen, date, onClose }) => {
@@ -25,7 +23,6 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch existing summary data when the modal opens
   useEffect(() => {
     const fetchSummary = async () => {
       if (!isOpen || !date) return;
@@ -73,65 +70,117 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
     }
   };
 
+  // Group fields dynamically based on the 'group' property
+  const groupedFields = SUMMARY_FIELDS.reduce((acc, field) => {
+    if (!acc[field.group]) acc[field.group] = [];
+    acc[field.group].push(field);
+    return acc;
+  }, {});
+
+  const renderField = (field) => {
+    const value = formData[field.id];
+
+    if (field.type === 'toggle') {
+      return (
+        <div className="compact-form-group compact-toggle" key={field.id}>
+          <label className="field-label" htmlFor={field.id}>{field.label}</label>
+          <label className="toggle-switch">
+            <input
+              id={field.id}
+              type="checkbox"
+              checked={!!value}
+              onChange={(e) => handleChange(field.id, e.target.checked)}
+              disabled={isLoading}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+        </div>
+      );
+    }
+
+    if (field.type === 'numberBar') {
+      const currentVal = value !== undefined ? value : field.min;
+      return (
+        <div className="compact-form-group compact-range" key={field.id}>
+          <div className="range-header">
+            <label className="field-label" htmlFor={field.id}>{field.label}</label>
+            <span className="range-value">{currentVal}</span>
+          </div>
+          <input
+            id={field.id}
+            type="range"
+            min={field.min}
+            max={field.max}
+            className="summary-slider"
+            value={currentVal}
+            onChange={(e) => handleChange(field.id, Number(e.target.value))}
+            disabled={isLoading}
+          />
+        </div>
+      );
+    }
+
+    // NEW: Handle Read-Only Number Display
+    if (field.type === 'numberReadOnly') {
+      return (
+        <div className="compact-form-group" key={field.id}>
+          <label className="field-label" htmlFor={field.id}>{field.label}</label>
+          <input
+            id={field.id}
+            type="number"
+            className="summary-input"
+            value={value !== undefined ? value : ''}
+            readOnly
+            disabled
+            style={{ opacity: 0.6, cursor: 'not-allowed', backgroundColor: 'var(--hover-bg)' }}
+          />
+        </div>
+      );
+    }
+
+    // Default Fallback (Number or Text)
+    return (
+      <div className="compact-form-group" key={field.id}>
+        <label className="field-label" htmlFor={field.id}>{field.label}</label>
+        <input
+          id={field.id}
+          type={field.type}
+          min={field.min}
+          max={field.max}
+          className="summary-input"
+          value={value || ''}
+          onChange={(e) => handleChange(field.id, field.type === 'number' ? Number(e.target.value) : e.target.value)}
+          disabled={isLoading}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="summary-modal-overlay" onClick={!isLoading ? onClose : undefined}>
       <div className="summary-modal" onClick={e => e.stopPropagation()}>
         <div className="summary-modal-header">
           <h3>Summary for {date}</h3>
-          <button 
-            className="close-btn" 
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            ✕
-          </button>
+          <button className="close-btn" onClick={onClose} disabled={isLoading}>✕</button>
         </div>
 
         {error && <div className="error-message" style={{ color: '#ff3b30', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
 
-        <form onSubmit={handleSubmit} className="summary-form">
-          {SUMMARY_FIELDS.map(field => (
-            <div className="form-group" key={field.id}>
-              <label htmlFor={field.id}>{field.label}</label>
-              
-              {field.type === 'textarea' ? (
-                <textarea
-                  id={field.id}
-                  className="summary-input"
-                  value={formData[field.id] || ''}
-                  onChange={(e) => handleChange(field.id, e.target.value)}
-                  rows={3}
-                  disabled={isLoading}
-                />
-              ) : (
-                <input
-                  id={field.id}
-                  type={field.type}
-                  min={field.min}
-                  max={field.max}
-                  className="summary-input"
-                  value={formData[field.id] || ''}
-                  onChange={(e) => handleChange(field.id, e.target.value)}
-                  disabled={isLoading}
-                />
-              )}
+        <form onSubmit={handleSubmit} className="summary-form compact-layout">
+          {Object.entries(groupedFields).map(([groupName, fields]) => (
+            <div className="summary-group" key={groupName}>
+              <h4 className="summary-group-title">{groupName}</h4>
+              <div className="summary-group-grid">
+                {fields.map(field => renderField(field))}
+              </div>
             </div>
           ))}
 
           <div className="summary-modal-actions">
-            <button 
-              type="button" 
-              className="btn-cancel" 
-              onClick={onClose}
-              disabled={isLoading}
-            >
+            <button type="button" className="btn-cancel" onClick={onClose} disabled={isLoading}>
               Cancel
             </button>
-            <button 
-              type="submit" 
-              className="btn-save"
-              disabled={isLoading}
-            >
+            <button type="submit" className="btn-save" disabled={isLoading}>
               {isLoading ? 'Saving...' : 'Save Summary'}
             </button>
           </div>
