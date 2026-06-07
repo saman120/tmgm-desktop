@@ -13,10 +13,25 @@ const SUMMARY_FIELDS = [
   { id: 'bmLevel', label: 'B.M. level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
   { id: 'foodHabit', label: 'Food habit', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
   { id: 'freshnessLevel', label: 'Freshness level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
-  { id: 'stressLevel', label: 'Stress level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
+  // Added reverseColor: true to stressLevel
+  { id: 'stressLevel', label: 'Stress level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary', reverseColor: true },
   { id: 'tirednessLevel', label: 'Tiredness level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
   { id: 'healthLevel', label: 'Health level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
 ];
+
+// Helper function updated to support reversing the color logic (Green to Red)
+const getColorForValue = (value, min, max, reverse = false) => {
+  const clampedValue = Math.max(min, Math.min(value, max));
+  let percentage = (clampedValue - min) / (max - min);
+  
+  // If reverse is true, 1 = Green and 10 = Red
+  if (reverse) {
+    percentage = 1 - percentage;
+  }
+  
+  const hue = percentage * 120;
+  return `hsl(${hue}, 90%, 45%)`; 
+};
 
 const DaySummaryForm = ({ isOpen, date, onClose }) => {
   const [formData, setFormData] = useState({});
@@ -35,7 +50,6 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
         setFormData(data || {});
       } catch (err) {
         console.error('Failed to fetch day summary:', err);
-        // If it fails (e.g., 404 Not Found because it doesn't exist yet), we just default to empty
         setFormData({});
       } finally {
         setIsLoading(false);
@@ -70,7 +84,6 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
     }
   };
 
-  // Group fields dynamically based on the 'group' property
   const groupedFields = SUMMARY_FIELDS.reduce((acc, field) => {
     if (!acc[field.group]) acc[field.group] = [];
     acc[field.group].push(field);
@@ -81,6 +94,9 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
     const value = formData[field.id];
 
     if (field.type === 'toggle') {
+      // Determine the active color based on the specific field ID
+      const activeColor = field.id === 'redFlags' ? '#ff3b30' : '#4caf50';
+
       return (
         <div className="compact-form-group compact-toggle" key={field.id}>
           <label className="field-label" htmlFor={field.id}>{field.label}</label>
@@ -92,7 +108,10 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
               onChange={(e) => handleChange(field.id, e.target.checked)}
               disabled={isLoading}
             />
-            <span className="toggle-slider"></span>
+            <span 
+              className="toggle-slider" 
+              style={!!value ? { backgroundColor: activeColor } : {}}
+            ></span>
           </label>
         </div>
       );
@@ -100,11 +119,29 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
 
     if (field.type === 'numberBar') {
       const currentVal = value !== undefined ? value : field.min;
+      // Pass the new reverseColor property to our helper function
+      const dynamicColor = getColorForValue(currentVal, field.min, field.max, field.reverseColor);
+      
+      const percentage = ((currentVal - field.min) / (field.max - field.min)) * 100;
+
       return (
         <div className="compact-form-group compact-range" key={field.id}>
           <div className="range-header">
             <label className="field-label" htmlFor={field.id}>{field.label}</label>
-            <span className="range-value">{currentVal}</span>
+            <span 
+              className="range-value"
+              style={{
+                backgroundColor: dynamicColor,
+                color: 'white',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '0.85em',
+                fontWeight: 'bold',
+                transition: 'background-color 0.3s ease'
+              }}
+            >
+              {currentVal}
+            </span>
           </div>
           <input
             id={field.id}
@@ -115,12 +152,16 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
             value={currentVal}
             onChange={(e) => handleChange(field.id, Number(e.target.value))}
             disabled={isLoading}
+            style={{ 
+              accentColor: dynamicColor,
+              background: `linear-gradient(to right, ${dynamicColor} ${percentage}%, #e0e0e0 ${percentage}%)`,
+              transition: 'accent-color 0.3s ease'
+            }}
           />
         </div>
       );
     }
 
-    // NEW: Handle Read-Only Number Display
     if (field.type === 'numberReadOnly') {
       return (
         <div className="compact-form-group" key={field.id}>
@@ -138,7 +179,6 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
       );
     }
 
-    // Default Fallback (Number or Text)
     return (
       <div className="compact-form-group" key={field.id}>
         <label className="field-label" htmlFor={field.id}>{field.label}</label>

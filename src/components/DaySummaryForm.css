@@ -245,3 +245,31 @@ input:checked + .toggle-slider:before {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* Add this to DaySummaryForm.css */
+.summary-slider {
+  -webkit-appearance: none; /* Removes default webkit styles */
+  appearance: none;
+  width: 100%;
+  height: 6px; /* Adjust thickness of the track here */
+  border-radius: 4px;
+  outline: none;
+}
+
+/* Ensure the thumb retains its shape after removing appearance */
+.summary-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  /* Background color is handled by the inline accentColor in JS */
+}
+
+.summary-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
