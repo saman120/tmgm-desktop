@@ -16,7 +16,11 @@ const playBlipSound = () => {
   }
 };
 
-const toISODate = (date) => date.toISOString().split('T')[0];
+// Unified date formatter to match App.js stats dictionary perfectly
+const getLocalDayKey = (date) => {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const TaskList = ({ 
   tasks,
@@ -42,8 +46,6 @@ const TaskList = ({
   const [summaryModalDay, setSummaryModalDay] = useState(null); 
   
   const [isBreathingLoading, setIsBreathingLoading] = useState(false);
-  
-  // NEW: Track the last hour the user breathed. Check local storage so it persists across reloads!
   const [lastBreathedHour, setLastBreathedHour] = useState(localStorage.getItem('lastBreathedHour') || null);
 
   useEffect(() => {
@@ -52,7 +54,7 @@ const TaskList = ({
   }, []);
 
   const currentMinute = currentTime.getMinutes();
-  const currentHourKey = `${toISODate(currentTime)}-${currentTime.getHours()}`;
+  const currentHourKey = `${getLocalDayKey(currentTime)}-${currentTime.getHours()}`;
 
   useEffect(() => {
     if (currentMinute % 5 === 0 && lastPlayedMinuteRef.current !== currentMinute) {
@@ -79,7 +81,7 @@ const TaskList = ({
     const targetDate = new Date(currentTime);
     if (isOvertime) targetDate.setHours(targetDate.getHours() - 1);
     
-    const targetHourKey = `${toISODate(targetDate)}-${targetDate.getHours()}`;
+    const targetHourKey = `${getLocalDayKey(targetDate)}-${targetDate.getHours()}`;
     completedInHr = stats.hourly[targetHourKey]?.totalCompleted || 0;
 
     const slotMinutes = isOvertime ? (currentMinute + 60 - 15) : (currentMinute - 15);
@@ -183,7 +185,7 @@ const TaskList = ({
   };
 
   const handleBreathingExercise = async () => {
-    const today = toISODate(currentTime);
+    const today = getLocalDayKey(currentTime);
     setIsBreathingLoading(true);
     try {
       const currentSummary = await taskAPI.getDaySummaryByDate(today);
@@ -196,7 +198,6 @@ const TaskList = ({
       
       playBlipSound();
       
-      // NEW: Lock the button for the current hour and save to local storage
       setLastBreathedHour(currentHourKey);
       localStorage.setItem('lastBreathedHour', currentHourKey);
 
@@ -206,7 +207,6 @@ const TaskList = ({
       setIsBreathingLoading(false);
     }
   };
-
 
   const renderElements = [];
 
@@ -235,7 +235,7 @@ const TaskList = ({
   const pushDayDivider = (dateObj, dayKey) => {
     const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
-    const isToday = dayKey === toISODate(currentTime);
+    const isToday = dayKey === getLocalDayKey(currentTime);
     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; 
     
     let hoursElapsed = 8; 
@@ -285,7 +285,7 @@ const pushHourDivider = (dateObj, hourKey) => {
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const displayHour = hour % 12 || 12;
   const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
-  const isCurrentHour = hourKey === `${toISODate(currentTime)}-${currentTime.getHours()}`;
+  const isCurrentHour = hourKey === `${getLocalDayKey(currentTime)}-${currentTime.getHours()}`;
   
   const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
   const isOffHour = hour < 9 || hour >= 19; 
@@ -352,7 +352,7 @@ const pushHourDivider = (dateObj, hourKey) => {
       const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
       const taskDate = new Date(timestamp || currentTime);
       
-      const dayKey = toISODate(taskDate);
+      const dayKey = getLocalDayKey(taskDate);
       const hour = taskDate.getHours();
       const hourKey = `${dayKey}-${hour}`;
 
@@ -360,7 +360,7 @@ const pushHourDivider = (dateObj, hourKey) => {
       taskDayStart.setHours(0, 0, 0, 0);
 
       while (currentDayIter > taskDayStart) {
-          const emptyDayKey = toISODate(currentDayIter);
+          const emptyDayKey = getLocalDayKey(currentDayIter);
           if (emptyDayKey !== lastDayKey) {
               pushDayDivider(currentDayIter, emptyDayKey);
           }
@@ -372,7 +372,7 @@ const pushHourDivider = (dateObj, hourKey) => {
           currentDayIter.setDate(currentDayIter.getDate() - 1);
       }
 
-      const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== toISODate(currentTime));
+      const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== getLocalDayKey(currentTime));
 
       if (!isDayCollapsed && hourKey !== lastHourKey) {
           pushHourDivider(taskDate, hourKey);
@@ -403,20 +403,12 @@ const pushHourDivider = (dateObj, hourKey) => {
   });
 
   while (currentDayIter >= cutoffDay) {
-      const emptyDayKey = toISODate(currentDayIter);
+      const emptyDayKey = getLocalDayKey(currentDayIter);
       if (emptyDayKey !== lastDayKey) {
           pushDayDivider(currentDayIter, emptyDayKey);
       }
       currentDayIter.setDate(currentDayIter.getDate() - 1);
   }
-
-  const handleSummarySubmit = (date, formData) => {
-    if (onSaveDaySummary) {
-      onSaveDaySummary(date, formData);
-    } else {
-      console.warn("onSaveDaySummary not implemented in App.js yet!", date, formData);
-    }
-  };
 
   const canBreatheThisHour = lastBreathedHour !== currentHourKey;
 
@@ -441,7 +433,6 @@ const pushHourDivider = (dateObj, hourKey) => {
 
         <div className={`current-stats-container phase-${phase} fade-in`} onClick={() => playBlipSound()} title="Click for sound alert">
           
-          {/* NEW: Breathing Exercise Button - Only shows during 'rest' AND if not already clicked this hour */}
           {phase === 'rest' && canBreatheThisHour && (
             <button 
               className="stat-pill breathing-btn"

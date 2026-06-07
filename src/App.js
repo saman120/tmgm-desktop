@@ -8,6 +8,12 @@ import ErrorMessage from './components/ErrorMessage';
 import { taskAPI } from './services/api';
 import './App.css';
 
+// Unified date formatter to prevent key mismatches
+const getLocalDayKey = (date) => {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 function App() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +28,6 @@ function App() {
       
       if (statusDiff !== 0) return statusDiff;
 
-      // FIX: Prioritize inProgressAt so the array perfectly matches the grouping engine!
       const timeA = Date.parse(a.inProgressAt || a.completedAt || a.updatedAt || a.createdAt || 0);
       const timeB = Date.parse(b.inProgressAt || b.completedAt || b.updatedAt || b.createdAt || 0);
 
@@ -127,19 +132,20 @@ function App() {
     });
   }, [tasks, showRecent]);
 
-  // Pre-calculate stats using inProgressAt as the primary grouping key
+  // Pre-calculate stats using consistent keys
   const taskStats = useMemo(() => {
     const daily = {};
     const hourly = {};
     
     filteredTasks.forEach(task => {
       if (task.status === 'completed') {
-        // Fallback safely to completedAt or updatedAt only if inProgressAt is somehow missing
         const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
         
         if (timestamp) {
           const taskDate = new Date(timestamp);
-          const dayKey = taskDate.toLocaleDateString();
+          
+          // FIX: Use shared getLocalDayKey logic
+          const dayKey = getLocalDayKey(taskDate);
           const hourKey = `${dayKey}-${taskDate.getHours()}`;
 
           if (!daily[dayKey]) daily[dayKey] = { totalCompleted: 0 };
