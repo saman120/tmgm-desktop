@@ -5,10 +5,19 @@ import { taskAPI } from '../services/api';
 
 // Easily add or remove fields here
 const SUMMARY_FIELDS = [
-  { id: 'focusScore', label: 'Focus Score (1-10)', type: 'number', min: 1, max: 10 },
-  { id: 'energyScore', label: 'Energy Score (1-10)', type: 'number', min: 1, max: 10 },
-  { id: 'highlights', label: 'Key Highlights', type: 'text' },
-  { id: 'notes', label: 'Notes & Blockers', type: 'textarea' }
+  { id: 'morningBM', label: 'Morning B.M.', type: 'toggle', min: 1, max: 10, group: 'Morning' },
+  { id: 'morningWalk', label: 'Morning Walk', type: 'toggle', min: 1, max: 10, group: 'Morning' },
+  { id: 'selfWork', label: 'Self work', type: 'toggle', min: 1, max: 10, group: 'Day' },
+  { id: 'newInvestment', label: 'New/Investment', type: 'toggle', min: 1, max: 10, group: 'Day' },
+  { id: 'foodHabit', label: 'Food habit', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'morningRoutine', label: 'Morning routine', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'bmLevel', label: 'B.M. level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'freshnessLevel', label: 'Freshness level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'stressLevel', label: 'Stress level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'tirednessLevel', label: 'Tiredness level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'healthLevel', label: 'Health level', type: 'numberSlider', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'breathingExec', label: 'Breathing exec', type: 'number', min: 1, max: 10, group: 'Day' },
+  { id: 'mm', label: 'MM', type: 'number', min: 1, max: 10, group: 'Other' },
 ];
 
 const DaySummaryForm = ({ isOpen, date, onClose }) => {

@@ -72,7 +72,7 @@ const TaskList = ({
     const targetDate = new Date(currentTime);
     if (isOvertime) targetDate.setHours(targetDate.getHours() - 1);
     
-    const targetHourKey = `${targetDate.toLocaleDateString()}-${targetDate.getHours()}`;
+    const targetHourKey = `${toISODate(targetDate)}-${targetDate.getHours()}`;
     completedInHr = stats.hourly[targetHourKey]?.totalCompleted || 0;
 
     const slotMinutes = isOvertime ? (currentMinute + 60 - 15) : (currentMinute - 15);
@@ -203,7 +203,7 @@ const TaskList = ({
   const pushDayDivider = (dateObj, dayKey) => {
     const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
-    const isToday = dayKey === currentTime.toLocaleDateString();
+    const isToday = dayKey === toISODate(currentTime);
     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; 
     
     let hoursElapsed = 8; 
@@ -254,7 +254,7 @@ const pushHourDivider = (dateObj, hourKey) => {
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const displayHour = hour % 12 || 12;
   const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
-  const isCurrentHour = hourKey === `${currentTime.toLocaleDateString()}-${currentTime.getHours()}`;
+  const isCurrentHour = hourKey === `${toISODate(currentTime)}-${currentTime.getHours()}`;
   
   const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
   const isOffHour = hour < 9 || hour >= 19; 
@@ -321,7 +321,7 @@ const pushHourDivider = (dateObj, hourKey) => {
       const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
       const taskDate = new Date(timestamp || currentTime);
       
-      const dayKey = taskDate.toLocaleDateString();
+      const dayKey = toISODate(taskDate);
       const hour = taskDate.getHours();
       const hourKey = `${dayKey}-${hour}`;
 
@@ -329,7 +329,7 @@ const pushHourDivider = (dateObj, hourKey) => {
       taskDayStart.setHours(0, 0, 0, 0);
 
       while (currentDayIter > taskDayStart) {
-          const emptyDayKey = currentDayIter.toISOString().split('T')[0];
+          const emptyDayKey = toISODate(currentDayIter);
           if (emptyDayKey !== lastDayKey) {
               pushDayDivider(currentDayIter, emptyDayKey);
           }
@@ -341,7 +341,7 @@ const pushHourDivider = (dateObj, hourKey) => {
           currentDayIter.setDate(currentDayIter.getDate() - 1);
       }
 
-      const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== currentTime.toLocaleDateString());
+      const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== toISODate(currentTime));
 
       if (!isDayCollapsed && hourKey !== lastHourKey) {
           pushHourDivider(taskDate, hourKey);
@@ -372,7 +372,7 @@ const pushHourDivider = (dateObj, hourKey) => {
   });
 
   while (currentDayIter >= cutoffDay) {
-      const emptyDayKey = currentDayIter.toLocaleDateString();
+      const emptyDayKey = toISODate(currentDayIter);
       if (emptyDayKey !== lastDayKey) {
           pushDayDivider(currentDayIter, emptyDayKey);
       }
