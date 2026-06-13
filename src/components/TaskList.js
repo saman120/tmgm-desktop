@@ -16,7 +16,6 @@ const playBlipSound = () => {
   }
 };
 
-// Unified date formatter to match App.js stats dictionary perfectly
 const getLocalDayKey = (date) => {
   const d = new Date(date);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -119,7 +118,12 @@ const TaskList = ({
     return { background: 'var(--stat-red-3)', color: 'var(--stat-text-dark)' }; 
   };
 
-  const getDailyStyle = (dailyAvg, isOffTime) => {
+  // Added isNeutral parameter to fall back to grey in the early morning
+  const getDailyStyle = (dailyAvg, isOffTime, isNeutral = false) => {
+    if (isNeutral) {
+      return { background: 'var(--hover-bg)', color: 'var(--text-muted)' };
+    }
+
     if (isOffTime) {
       if (dailyAvg > 6) return { background: 'var(--stat-off-green-1)', color: 'var(--stat-text-light)' }; 
       if (dailyAvg >= 4) return { background: 'var(--stat-off-green-2)', color: 'var(--stat-text-dark)' };
@@ -238,6 +242,9 @@ const TaskList = ({
     const isToday = dayKey === getLocalDayKey(currentTime);
     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; 
     
+    // Check if it's before 10 AM on the current day with 0 completed tasks
+    const isEarlyMorningNeutral = isToday && currentTime.getHours() < 10 && dayStats.totalCompleted === 0;
+    
     let hoursElapsed = 8; 
     if (isToday) {
         const h = currentTime.getHours();
@@ -246,7 +253,7 @@ const TaskList = ({
     }
 
     const dailyAvg = dayStats.totalCompleted / hoursElapsed;
-    const dayStyle = getDailyStyle(dailyAvg, isWeekend); 
+    const dayStyle = getDailyStyle(dailyAvg, isWeekend, isEarlyMorningNeutral); 
     const isCollapsed = collapsedGroups[dayKey] ?? !isToday;
 
     const statsText = ` • ${dayStats.totalCompleted} slots (${dailyAvg.toFixed(1)}/hr)`;
@@ -433,7 +440,8 @@ const pushHourDivider = (dateObj, hourKey) => {
 
         <div className={`current-stats-container phase-${phase} fade-in`} onClick={() => playBlipSound()} title="Click for sound alert">
           
-          {phase === 'rest' && canBreatheThisHour && (
+          {/* Removed the phase === 'rest' check so it shows for the entire hour until clicked */}
+          {canBreatheThisHour && (
             <button 
               className="stat-pill breathing-btn"
               onClick={(e) => {
