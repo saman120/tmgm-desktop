@@ -6,7 +6,6 @@ import { taskAPI } from '../services/api';
 const SUMMARY_FIELDS = [
   { id: 'morningBM', label: 'Morning B.M.', type: 'toggle', min: 1, max: 10, group: 'Morning' },
   { id: 'morningWalk', label: 'Morning Walk', type: 'toggle', min: 1, max: 10, group: 'Morning' },
-  // Changed to numberBar with readOnly and min 0
   { id: 'breathingExec', label: 'Breathing exec', type: 'numberBar', min: 0, max: 10, group: 'Morning' },
   { id: 'selfWork', label: 'Self work', type: 'toggle', min: 1, max: 10, group: 'Morning' },
   { id: 'newInvestment', label: 'New/Investment', type: 'toggle', min: 1, max: 10, group: 'Morning' },
@@ -15,7 +14,6 @@ const SUMMARY_FIELDS = [
   { id: 'foodHabit', label: 'Food habit', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
   { id: 'freshnessLevel', label: 'Freshness level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
   { id: 'stressLevel', label: 'Stress level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary', reverseColor: true },
-  // Added reverseColor: true to tirednessLevel
   { id: 'tirednessLevel', label: 'Tiredness level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary', reverseColor: true },
   { id: 'healthLevel', label: 'Health level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
 ];
