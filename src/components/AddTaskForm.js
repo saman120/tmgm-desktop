@@ -93,7 +93,6 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
             placeholder="What needs to be done?"
             className="task-input"
             maxLength={500}
-            disabled={isSubmitting}
             required
           />
         </div>

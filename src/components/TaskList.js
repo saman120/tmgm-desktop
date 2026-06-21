@@ -456,11 +456,11 @@ const pushHourDivider = (dateObj, hourKey) => {
           )}
 
           <span className="stat-pill phase-indicator">
-            {phase === 'rest' && '🛌 Rest'}
+            {phase === 'rest' && '🌿 Rest'}
             {phase === 'planning' && '📝 Plan'}
             {phase === 'working' && '🔥 Work'}
           </span>
-          <span className="stat-pill" title="Elapsed minutes in current 5m block">⏱️ {4-elapsedTime}m</span>
+          <span className="stat-pill" title="Elapsed minutes in current 5m block">⏱️ {5-elapsedTime}m</span>
           {phase === 'working' && (
             <span className="stat-pill" title="Completed Tasks / Elapsed Slots">
               ✅ {completedInHr}/{elapsedSlot}
