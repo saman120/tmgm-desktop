@@ -195,16 +195,17 @@ const TaskItem = ({
     const dC = task.delayCount || 0;
     const distC = task.distractionCount || 0;
 
-    let delayColor = 'var(--comp-green)'; 
-    if (dC < 0.5) delayColor = 'var(--comp-purple)'; 
-    else if (dC >= 2 && dC <= 5) delayColor = 'var(--comp-red-1)'; 
-    else if (dC > 5 && dC <= 10) delayColor = 'var(--comp-red-2)'; 
-    else if (dC > 10) delayColor = 'var(--comp-red-3)'; 
+    // dC < 0: completed noticeably early ("too soon"). dC in [0, 2): on schedule/small buffer.
+    let delayColor = 'var(--comp-green)';
+    if (dC < 0) delayColor = 'var(--comp-purple)';
+    else if (dC > 1 && dC <= 5) delayColor = 'var(--comp-red-1)';
+    else if (dC > 5 && dC <= 10) delayColor = 'var(--comp-red-2)';
+    else if (dC > 10) delayColor = 'var(--comp-red-3)';
 
-    let distColor = 'var(--comp-green)'; 
-    if (distC > 1 && distC <= 5) distColor = 'var(--comp-yellow-1)'; 
-    else if (distC > 5 && distC <= 10) distColor = 'var(--comp-yellow-2)'; 
-    else if (distC > 10) distColor = 'var(--comp-yellow-3)'; 
+    let distColor = 'var(--comp-green)';
+    if (distC > 1 && distC <= 5) distColor = 'var(--comp-yellow-1)';
+    else if (distC > 5 && distC <= 10) distColor = 'var(--comp-yellow-2)';
+    else if (distC > 10) distColor = 'var(--comp-yellow-3)';
 
     return { 
       background: `linear-gradient(135deg, ${delayColor} 0%, ${distColor} 100%)`,
@@ -275,10 +276,11 @@ const TaskItem = ({
               <span className="status-icon">😵</span> {task.distractionCount || 0}
             </button>}
 
-            {(task.status === 'completed' && !!task.delayCount) && <button 
-              className="count-button count-button-highlight" 
+            {(task.status === 'completed' && !!task.delayCount) && <button
+              className="count-button count-button-highlight"
+              title={task.delayCount < 0 ? "Completed early" : "Completed late"}
             >
-              <span className="status-icon">⏰</span> {Math.round(task.delayCount)}
+              <span className="status-icon">{task.delayCount < 0 ? '⚡' : '⏰'}</span> {Math.round(Math.abs(task.delayCount))}
             </button>}
 
             {task.status !== 'completed' && <button className='delete-button' title="Set completed" onClick={() => handleStatusClick('completed')}>

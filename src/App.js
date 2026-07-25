@@ -44,7 +44,7 @@ function App() {
       setLoading(true);
       setError(null);
       const fetchedTasks = await taskAPI.getAllTasks();
-      sortTasks(fetchedTasks.map(task => ({ ...task, delayCount: Math.round(task.delayCount || 0) })));
+      sortTasks(fetchedTasks);
     } catch (err) {
       console.error('Failed to load tasks:', err);
       setError('Failed to load tasks. Please check your connection.');
@@ -92,6 +92,26 @@ function App() {
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  // Background create/update syncs (services/api.js) resolve after the optimistic
+  // local write already rendered, so server-computed fields (e.g. delayCount) need
+  // to be merged into state here rather than waiting for the next manual refresh.
+  useEffect(() => {
+    const unsubscribe = taskAPI.subscribeToTaskSync((serverTask) => {
+      const { tempId, ...cleanServerTask } = serverTask;
+      const matchId = tempId ?? cleanServerTask._id;
+
+      setTasks(prev => {
+        const index = prev.findIndex(t => t._id === matchId);
+        if (index === -1) return prev;
+        const next = [...prev];
+        next[index] = cleanServerTask;
+        return next;
+      });
+    });
+
+    return unsubscribe;
+  }, []);
 
   const handleStatusToggle = useCallback(async (taskId, currentStatus, status) => {
     const statusCycle = { 'hold': 'in-progress', 'in-progress': 'completed', 'pending': 'in-progress' };

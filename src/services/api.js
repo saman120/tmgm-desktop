@@ -37,6 +37,16 @@ const runInBackground = (promise) => {
   });
 };
 
+// Notifies subscribers when a background sync resolves with the server's
+// authoritative copy of a task (e.g. server-computed fields like delayCount),
+// since the optimistic local write returned by create/updateTask happens
+// before that round-trip completes.
+const taskSyncListeners = new Set();
+const notifyTaskSynced = (task) => {
+  if (!task) return;
+  taskSyncListeners.forEach((listener) => listener(task));
+};
+
 class APIError extends Error {
   constructor(message, status) {
     super(message);
@@ -100,19 +110,20 @@ export const taskAPI = {
   // Get task by ID
   async getTaskById(id) {
     const tasks = getStoredTasks();
-    const localTask = tasks.find((task) => String(task?.id) === String(id)) || null;
+    const localTask = tasks.find((task) => String(task?._id) === String(id)) || null;
 
     runInBackground(
       apiRequest(`/api/tasks/${id}`).then((serverTask) => {
         if (!serverTask) return;
         const nextTasks = getStoredTasks();
-        const index = nextTasks.findIndex((task) => String(task?.id) === String(id));
+        const index = nextTasks.findIndex((task) => String(task?._id) === String(id));
         if (index >= 0) {
           nextTasks[index] = serverTask;
         } else {
           nextTasks.push(serverTask);
         }
         setStoredTasks(nextTasks);
+        notifyTaskSynced(serverTask);
       })
     );
 
@@ -122,8 +133,8 @@ export const taskAPI = {
   // Create new task
   async createTask(taskData) {
     const localTasks = getStoredTasks();
-    const tempId = taskData?.id ?? `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const localTask = { ...taskData, id: tempId };
+    const tempId = taskData?._id ?? `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const localTask = { ...taskData, _id: tempId };
     setStoredTasks([...localTasks, localTask]);
 
     runInBackground(
@@ -133,8 +144,9 @@ export const taskAPI = {
       }).then((createdTask) => {
         if (!createdTask) return;
         const current = getStoredTasks();
-        const next = current.map((task) => (String(task?.id) === String(tempId) ? createdTask : task));
+        const next = current.map((task) => (String(task?._id) === String(tempId) ? createdTask : task));
         setStoredTasks(next);
+        notifyTaskSynced({ ...createdTask, tempId });
       })
     );
 
@@ -144,10 +156,10 @@ export const taskAPI = {
   // Update existing task
   async updateTask(id, updates) {
     const localTasks = getStoredTasks();
-    const index = localTasks.findIndex((task) => String(task?.id) === String(id));
+    const index = localTasks.findIndex((task) => String(task?._id) === String(id));
     const updatedLocalTask = index >= 0
       ? { ...localTasks[index], ...updates }
-      : { id, ...updates };
+      : { _id: id, ...updates };
 
     if (index >= 0) {
       localTasks[index] = updatedLocalTask;
@@ -163,13 +175,14 @@ export const taskAPI = {
       }).then((serverTask) => {
         if (!serverTask) return;
         const current = getStoredTasks();
-        const serverIndex = current.findIndex((task) => String(task?.id) === String(id));
+        const serverIndex = current.findIndex((task) => String(task?._id) === String(id));
         if (serverIndex >= 0) {
           current[serverIndex] = serverTask;
         } else {
           current.push(serverTask);
         }
         setStoredTasks(current);
+        notifyTaskSynced(serverTask);
       })
     );
 
@@ -179,7 +192,7 @@ export const taskAPI = {
   // Delete task
   async deleteTask(id) {
     const localTasks = getStoredTasks();
-    setStoredTasks(localTasks.filter((task) => String(task?.id) !== String(id)));
+    setStoredTasks(localTasks.filter((task) => String(task?._id) !== String(id)));
 
     runInBackground(
       apiRequest(`/api/tasks/${id}`, {
@@ -188,6 +201,13 @@ export const taskAPI = {
     );
 
     return { success: true };
+  },
+
+  // Subscribe to server-authoritative task data arriving after a background sync
+  // (e.g. server-computed fields like delayCount). Returns an unsubscribe function.
+  subscribeToTaskSync(listener) {
+    taskSyncListeners.add(listener);
+    return () => taskSyncListeners.delete(listener);
   },
 
   // Get all day summaries (local-first data is already the full map, no network round-trip needed)

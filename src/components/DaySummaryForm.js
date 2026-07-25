@@ -4,12 +4,12 @@ import './DaySummaryForm.css';
 import { taskAPI } from '../services/api';
 
 const SUMMARY_FIELDS = [
-  { id: 'morningBM', label: 'Morning B.M.', type: 'toggle', min: 1, max: 10, group: 'Morning' },
-  { id: 'morningWalk', label: 'Morning Walk', type: 'toggle', min: 1, max: 10, group: 'Morning' },
+  { id: 'morningBM', label: 'Morning B.M.', type: 'toggle', group: 'Morning' },
+  { id: 'morningWalk', label: 'Morning Walk', type: 'toggle', group: 'Morning' },
   { id: 'breathingExec', label: 'Breathing exec', type: 'numberBar', min: 0, max: 10, group: 'Morning' },
-  { id: 'selfWork', label: 'Self work', type: 'toggle', min: 1, max: 10, group: 'Morning' },
-  { id: 'newInvestment', label: 'New/Investment', type: 'toggle', min: 1, max: 10, group: 'Morning' },
-  { id: 'redFlags', label: 'Red Flags (M)', type: 'toggle', min: 1, max: 10, group: 'Morning' },
+  { id: 'selfWork', label: 'Self work', type: 'toggle', group: 'Morning' },
+  { id: 'newInvestment', label: 'New/Investment', type: 'toggle', group: 'Morning' },
+  { id: 'redFlags', label: 'Red Flags (M)', type: 'toggle', group: 'Morning' },
   { id: 'bmLevel', label: 'B.M. level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
   { id: 'foodHabit', label: 'Food habit', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
   { id: 'freshnessLevel', label: 'Freshness level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
