@@ -14,18 +14,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     quitApp: () => ipcRenderer.invoke('quit-app'),
     
     // Event listeners for main process communications
-    onCompleteCurrentTask: (callback) => {
-        const wrappedCallback = () => callback();
-        ipcRenderer.on('complete-current-task', wrappedCallback);
-        return () => ipcRenderer.removeListener('complete-current-task', wrappedCallback);
-    },
-    
-    onCheckInProgressTask: (callback) => {
-        const wrappedCallback = () => callback();
-        ipcRenderer.on('check-in-progress-task', wrappedCallback);
-        return () => ipcRenderer.removeListener('check-in-progress-task', wrappedCallback);
-    },
-    
     onNotificationClicked: (callback) => {
         const wrappedCallback = () => callback();
         ipcRenderer.on('notification-clicked', wrappedCallback);

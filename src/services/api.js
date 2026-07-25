@@ -190,6 +190,11 @@ export const taskAPI = {
     return { success: true };
   },
 
+  // Get all day summaries (local-first data is already the full map, no network round-trip needed)
+  async getAllDaySummaries() {
+    return getStoredDaySummaries();
+  },
+
   // Get day summary by date
   async getDaySummaryByDate(date) {
     const allSummaries = getStoredDaySummaries();

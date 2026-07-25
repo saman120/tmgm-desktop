@@ -1,6 +1,7 @@
 // src/components/AddTaskForm.js
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
+import { parseTaskShorthand } from '../utils/taskDescriptionParser';
 import './AddTaskForm.css';
 
 const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
@@ -23,24 +24,7 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
     try {
       setIsSubmitting(true);
       setDescription('');
-      const data = { description: trimmedDescription };
-
-      const split = trimmedDescription.split('###');
-      if (split[1] ) {
-        const splitComma = split[1].split(',');
-        const distractionCount = parseInt(splitComma[0], 10);
-        const inProgressAt = splitComma[1] && new Date(new Date().toISOString().split('T')[0]+'T'+splitComma[1]);
-        const completedAt = splitComma[2] && new Date(new Date().toISOString().split('T')[0]+'T'+splitComma[2]);
-        if( distractionCount >= 0){
-          data.distractionCount = distractionCount;
-        } 
-        if(inProgressAt){
-          data.inProgressAt = inProgressAt;
-        }
-        if(completedAt){
-          data.completedAt = completedAt;
-        }
-      }
+      const data = parseTaskShorthand(trimmedDescription);
       await onSubmit(data);
     } catch (error) {
       console.error('Failed to create task:', error);

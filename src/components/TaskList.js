@@ -1,24 +1,20 @@
 // src/components/TaskList.js
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import DaySummaryForm from './DaySummaryForm'; 
 import { taskAPI } from '../services/api';
+import { getLocalDayKey } from '../utils/dateUtils';
 import './TaskList.css';
 
 const playBlipSound = () => {
   try {
     const soundPath = process.env.PUBLIC_URL + '/beep.mp3';
-    const audio = new Audio(soundPath); 
+    const audio = new Audio(soundPath);
     audio.play().catch(e => console.warn("Audio play blocked:", e));
   } catch (e) {
     console.error("Failed to play audio:", e);
   }
-};
-
-const getLocalDayKey = (date) => {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 const TaskList = ({ 
@@ -31,29 +27,37 @@ const TaskList = ({
   onReorder,
   onTaskUpdate,
   onShowRecentToggle,
-  showRecent,
-  daySummaries = {}, 
-  onSaveDaySummary 
+  showRecent
 }) => {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
-  
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const lastPlayedMinuteRef = useRef(new Date().getMinutes());
 
   const [collapsedGroups, setCollapsedGroups] = useState({});
-  const [summaryModalDay, setSummaryModalDay] = useState(null); 
-  
+  const [summaryModalDay, setSummaryModalDay] = useState(null);
+  const [daySummaries, setDaySummaries] = useState({});
+
   const [isBreathingLoading, setIsBreathingLoading] = useState(false);
   const [lastBreathedHour, setLastBreathedHour] = useState(localStorage.getItem('lastBreathedHour') || null);
 
+  const refreshDaySummaries = useCallback(() => {
+    taskAPI.getAllDaySummaries().then(setDaySummaries).catch(() => {});
+  }, []);
+
   useEffect(() => {
-    const intervalId = setInterval(() => setCurrentTime(new Date()), 10000); 
+    refreshDaySummaries();
+  }, [refreshDaySummaries]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setCurrentTime(new Date()), 10000);
     return () => clearInterval(intervalId);
   }, []);
 
   const currentMinute = currentTime.getMinutes();
   const currentHourKey = `${getLocalDayKey(currentTime)}-${currentTime.getHours()}`;
+  const currentMinuteKey = `${currentHourKey}-${currentMinute}`;
 
   useEffect(() => {
     if (currentMinute % 5 === 0 && lastPlayedMinuteRef.current !== currentMinute) {
@@ -85,10 +89,6 @@ const TaskList = ({
 
     const slotMinutes = isOvertime ? (currentMinute + 60 - 15) : (currentMinute - 15);
     elapsedSlot = Math.floor(slotMinutes / 5) + 1; 
-  }
-
-  if (tasks.length === 0) {
-    return <EmptyState onRefresh={onRefresh} />;
   }
 
   const toggleGroup = (key, defaultCollapsed = false) => {
@@ -212,209 +212,218 @@ const TaskList = ({
     }
   };
 
-  const renderElements = [];
+  const renderElements = useMemo(() => {
+    const elements = [];
 
-  let currentDayIter = new Date(currentTime);
-  currentDayIter.setHours(0, 0, 0, 0);
-  
-  let oldestDateMs = currentDayIter.getTime();
-  if (!showRecent && tasks.length > 0) {
-      tasks.forEach(t => {
-         if (t.status === 'completed') {
-             const ts = t.inProgressAt || t.completedAt || t.updatedAt;
-             if (ts && Date.parse(ts) < oldestDateMs) {
-                 oldestDateMs = Date.parse(ts);
-             }
-         }
-      });
-  } else {
-      oldestDateMs = currentDayIter.getTime() - (14 * 24 * 60 * 60 * 1000);
-  }
-  const cutoffDay = new Date(oldestDateMs);
-  cutoffDay.setHours(0, 0, 0, 0);
+    let currentDayIter = new Date(currentTime);
+    currentDayIter.setHours(0, 0, 0, 0);
 
-  let lastDayKey = null;
-  let lastHourKey = null;
-  
-  const pushDayDivider = (dateObj, dayKey) => {
-    const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-    const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
-    const isToday = dayKey === getLocalDayKey(currentTime);
-    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6; 
-    
-    // Check if it's before 10 AM on the current day with 0 completed tasks
-    const isEarlyMorningNeutral = isToday && currentTime.getHours() < 10 && dayStats.totalCompleted === 0;
-    
-    let hoursElapsed = 8; 
-    if (isToday) {
-        const h = currentTime.getHours();
-        const m = currentTime.getMinutes();
-        hoursElapsed = h < 9 ? 1 : Math.max(0.5, (h - 9) + (m / 60)); 
+    let oldestDateMs = currentDayIter.getTime();
+    if (!showRecent && tasks.length > 0) {
+        tasks.forEach(t => {
+           if (t.status === 'completed') {
+               const ts = t.inProgressAt || t.completedAt || t.updatedAt;
+               if (ts && Date.parse(ts) < oldestDateMs) {
+                   oldestDateMs = Date.parse(ts);
+               }
+           }
+        });
+    } else {
+        oldestDateMs = currentDayIter.getTime() - (14 * 24 * 60 * 60 * 1000);
+    }
+    const cutoffDay = new Date(oldestDateMs);
+    cutoffDay.setHours(0, 0, 0, 0);
+
+    let lastDayKey = null;
+    let lastHourKey = null;
+
+    const pushDayDivider = (dateObj, dayKey) => {
+      const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+      const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
+      const isToday = dayKey === getLocalDayKey(currentTime);
+      const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+
+      // Check if it's before 10 AM on the current day with 0 completed tasks
+      const isEarlyMorningNeutral = isToday && currentTime.getHours() < 10 && dayStats.totalCompleted === 0;
+
+      let hoursElapsed = 8;
+      if (isToday) {
+          const h = currentTime.getHours();
+          const m = currentTime.getMinutes();
+          hoursElapsed = h < 9 ? 1 : Math.max(0.5, (h - 9) + (m / 60));
+      }
+
+      const dailyAvg = dayStats.totalCompleted / hoursElapsed;
+      const dayStyle = getDailyStyle(dailyAvg, isWeekend, isEarlyMorningNeutral);
+      const isCollapsed = collapsedGroups[dayKey] ?? !isToday;
+
+      const statsText = ` • ${dayStats.totalCompleted} slots (${dailyAvg.toFixed(1)}/hr)`;
+      const hasSummary = !!daySummaries[dayKey];
+
+      elements.push(
+          <div className="time-divider day-divider" key={`day-${dayKey}`}>
+              <span
+                className="time-divider-text day-text"
+                style={{ ...dayStyle, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                onClick={() => toggleGroup(dayKey, !isToday)}
+                title={`Daily Avg: ${dailyAvg.toFixed(1)} slots/hr (over ${hoursElapsed.toFixed(1)} hrs)`}
+              >
+                  <span>{isCollapsed ? '▶ ' : '▼ '} {displayDate}{statsText}</span>
+
+                  <button
+                    className="day-summary-edit-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSummaryModalDay(dayKey);
+                    }}
+                    title={hasSummary ? "Edit Day Summary" : "Add Day Summary"}
+                  >
+                    {hasSummary ? '📝' : '➕'}
+                  </button>
+              </span>
+          </div>
+      );
+
+      lastDayKey = dayKey;
+      lastHourKey = null;
+    };
+
+    const pushHourDivider = (dateObj, hourKey) => {
+      const hour = dateObj.getHours();
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
+      const isCurrentHour = hourKey === `${getLocalDayKey(currentTime)}-${currentTime.getHours()}`;
+
+      const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+      const isOffHour = hour < 9 || hour >= 19;
+      const isOffTime = isWeekend || isOffHour;
+
+      let expectedSlots = 9;
+      if (isCurrentHour && !isOffTime) {
+          const m = currentTime.getMinutes();
+          expectedSlots = m < 15 ? 1 : Math.floor((m - 15) / 5) + 1;
+      } else if (isOffTime) {
+          expectedSlots = isCurrentHour ? 1 : hourStats.totalCompleted || 1;
+      }
+
+      const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots, isOffTime);
+      const isCollapsed = collapsedGroups[hourKey] ?? false;
+
+      const statsText = isOffTime
+        ? ` • ${hourStats.totalCompleted} slots`
+        : ` • ${hourStats.totalCompleted}/${expectedSlots} slots`;
+
+      elements.push(
+          <div className="time-divider hour-divider" key={`hour-${hourKey}`}>
+              <span
+                className="time-divider-text hour-text"
+                style={{ ...hourStyle, cursor: 'pointer', userSelect: 'none' }}
+                onClick={() => toggleGroup(hourKey, false)}
+                title={isOffTime ? `Off-hours slots: ${hourStats.totalCompleted}` : `Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}
+              >
+                  {isCollapsed ? '▶ ' : '▼ '} {displayHour} {ampm}{statsText}
+              </span>
+          </div>
+      );
+      lastHourKey = hourKey;
+    };
+
+    tasks.forEach((task, index) => {
+        let dragOverClass = '';
+        if (dragOverIndex === index) {
+            dragOverClass = draggedIndex < index ? 'drag-over-bottom' : 'drag-over-top';
+        }
+
+        if (task.status !== 'completed') {
+            elements.push(
+                <TaskItem
+                    key={task._id}
+                    task={task}
+                    isFirst={index === 0 && task.status === 'in-progress'}
+                    onStatusToggle={onStatusToggle}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onDelete={onDelete}
+                    draggable={true}
+                    onTaskUpdate={onTaskUpdate}
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                    isDragged={draggedIndex === index}
+                    dragOverClass={dragOverClass}
+                />
+            );
+            return;
+        }
+
+        const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
+        const taskDate = new Date(timestamp || currentTime);
+
+        const dayKey = getLocalDayKey(taskDate);
+        const hour = taskDate.getHours();
+        const hourKey = `${dayKey}-${hour}`;
+
+        const taskDayStart = new Date(taskDate);
+        taskDayStart.setHours(0, 0, 0, 0);
+
+        while (currentDayIter > taskDayStart) {
+            const emptyDayKey = getLocalDayKey(currentDayIter);
+            if (emptyDayKey !== lastDayKey) {
+                pushDayDivider(currentDayIter, emptyDayKey);
+            }
+            currentDayIter.setDate(currentDayIter.getDate() - 1);
+        }
+
+        if (dayKey !== lastDayKey) {
+            pushDayDivider(taskDate, dayKey);
+            currentDayIter.setDate(currentDayIter.getDate() - 1);
+        }
+
+        const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== getLocalDayKey(currentTime));
+
+        if (!isDayCollapsed && hourKey !== lastHourKey) {
+            pushHourDivider(taskDate, hourKey);
+        }
+
+        const isHourCollapsed = collapsedGroups[hourKey] ?? false;
+
+        if (!isDayCollapsed && !isHourCollapsed) {
+            elements.push(
+                <TaskItem
+                    key={task._id}
+                    task={task}
+                    isFirst={false}
+                    onStatusToggle={onStatusToggle}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onDelete={onDelete}
+                    draggable={true}
+                    onTaskUpdate={onTaskUpdate}
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                    isDragged={draggedIndex === index}
+                    dragOverClass={dragOverClass}
+                />
+            );
+        }
+    });
+
+    while (currentDayIter >= cutoffDay) {
+        const emptyDayKey = getLocalDayKey(currentDayIter);
+        if (emptyDayKey !== lastDayKey) {
+            pushDayDivider(currentDayIter, emptyDayKey);
+        }
+        currentDayIter.setDate(currentDayIter.getDate() - 1);
     }
 
-    const dailyAvg = dayStats.totalCompleted / hoursElapsed;
-    const dayStyle = getDailyStyle(dailyAvg, isWeekend, isEarlyMorningNeutral); 
-    const isCollapsed = collapsedGroups[dayKey] ?? !isToday;
+    return elements;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, stats, collapsedGroups, showRecent, draggedIndex, dragOverIndex, daySummaries, currentMinuteKey]);
 
-    const statsText = ` • ${dayStats.totalCompleted} slots (${dailyAvg.toFixed(1)}/hr)`;
-    const hasSummary = !!daySummaries[dayKey];
-
-    renderElements.push(
-        <div className="time-divider day-divider" key={`day-${dayKey}`}>
-            <span 
-              className="time-divider-text day-text" 
-              style={{ ...dayStyle, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }} 
-              onClick={() => toggleGroup(dayKey, !isToday)}
-              title={`Daily Avg: ${dailyAvg.toFixed(1)} slots/hr (over ${hoursElapsed.toFixed(1)} hrs)`}
-            >
-                <span>{isCollapsed ? '▶ ' : '▼ '} {displayDate}{statsText}</span>
-                
-                <button 
-                  className="day-summary-edit-btn"
-                  onClick={(e) => {
-                    e.stopPropagation(); 
-                    setSummaryModalDay(dayKey);
-                  }}
-                  title={hasSummary ? "Edit Day Summary" : "Add Day Summary"}
-                >
-                  {hasSummary ? '📝' : '➕'}
-                </button>
-            </span>
-        </div>
-    );
-    
-    lastDayKey = dayKey;
-    lastHourKey = null; 
-};
-
-const pushHourDivider = (dateObj, hourKey) => {
-  const hour = dateObj.getHours();
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 || 12;
-  const hourStats = stats.hourly[hourKey] || { totalCompleted: 0 };
-  const isCurrentHour = hourKey === `${getLocalDayKey(currentTime)}-${currentTime.getHours()}`;
-  
-  const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-  const isOffHour = hour < 9 || hour >= 19; 
-  const isOffTime = isWeekend || isOffHour;
-  
-  let expectedSlots = 9; 
-  if (isCurrentHour && !isOffTime) {
-      const m = currentTime.getMinutes();
-      expectedSlots = m < 15 ? 1 : Math.floor((m - 15) / 5) + 1;
-  } else if (isOffTime) {
-      expectedSlots = isCurrentHour ? 1 : hourStats.totalCompleted || 1;
-  }
-
-  const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots, isOffTime); 
-  const isCollapsed = collapsedGroups[hourKey] ?? false;
-
-  const statsText = isOffTime 
-    ? ` • ${hourStats.totalCompleted} slots` 
-    : ` • ${hourStats.totalCompleted}/${expectedSlots} slots`;
-
-  renderElements.push(
-      <div className="time-divider hour-divider" key={`hour-${hourKey}`}>
-          <span 
-            className="time-divider-text hour-text" 
-            style={{ ...hourStyle, cursor: 'pointer', userSelect: 'none' }} 
-            onClick={() => toggleGroup(hourKey, false)}
-            title={isOffTime ? `Off-hours slots: ${hourStats.totalCompleted}` : `Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}
-          >
-              {isCollapsed ? '▶ ' : '▼ '} {displayHour} {ampm}{statsText}
-          </span>
-      </div>
-  );
-  lastHourKey = hourKey;
-};
-
-  tasks.forEach((task, index) => {
-      let dragOverClass = '';
-      if (dragOverIndex === index) {
-          dragOverClass = draggedIndex < index ? 'drag-over-bottom' : 'drag-over-top';
-      }
-
-      if (task.status !== 'completed') {
-          renderElements.push(
-              <TaskItem
-                  key={task._id}
-                  task={task}
-                  isFirst={index === 0 && task.status === 'in-progress'}
-                  onStatusToggle={onStatusToggle}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onDelete={onDelete}
-                  draggable={true}
-                  onTaskUpdate={onTaskUpdate}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
-                  isDragged={draggedIndex === index}
-                  dragOverClass={dragOverClass}
-              />
-          );
-          return;
-      }
-
-      const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
-      const taskDate = new Date(timestamp || currentTime);
-      
-      const dayKey = getLocalDayKey(taskDate);
-      const hour = taskDate.getHours();
-      const hourKey = `${dayKey}-${hour}`;
-
-      const taskDayStart = new Date(taskDate);
-      taskDayStart.setHours(0, 0, 0, 0);
-
-      while (currentDayIter > taskDayStart) {
-          const emptyDayKey = getLocalDayKey(currentDayIter);
-          if (emptyDayKey !== lastDayKey) {
-              pushDayDivider(currentDayIter, emptyDayKey);
-          }
-          currentDayIter.setDate(currentDayIter.getDate() - 1);
-      }
-
-      if (dayKey !== lastDayKey) {
-          pushDayDivider(taskDate, dayKey);
-          currentDayIter.setDate(currentDayIter.getDate() - 1);
-      }
-
-      const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== getLocalDayKey(currentTime));
-
-      if (!isDayCollapsed && hourKey !== lastHourKey) {
-          pushHourDivider(taskDate, hourKey);
-      }
-
-      const isHourCollapsed = collapsedGroups[hourKey] ?? false;
-
-      if (!isDayCollapsed && !isHourCollapsed) {
-          renderElements.push(
-              <TaskItem
-                  key={task._id}
-                  task={task}
-                  isFirst={false}
-                  onStatusToggle={onStatusToggle}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onDelete={onDelete}
-                  draggable={true}
-                  onTaskUpdate={onTaskUpdate}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={(e) => handleDrop(e, index)}
-                  onDragEnd={handleDragEnd}
-                  isDragged={draggedIndex === index}
-                  dragOverClass={dragOverClass}
-              />
-          );
-      }
-  });
-
-  while (currentDayIter >= cutoffDay) {
-      const emptyDayKey = getLocalDayKey(currentDayIter);
-      if (emptyDayKey !== lastDayKey) {
-          pushDayDivider(currentDayIter, emptyDayKey);
-      }
-      currentDayIter.setDate(currentDayIter.getDate() - 1);
+  if (tasks.length === 0) {
+    return <EmptyState onRefresh={onRefresh} />;
   }
 
   const canBreatheThisHour = lastBreathedHour !== currentHourKey;
@@ -473,10 +482,13 @@ const pushHourDivider = (dateObj, hourKey) => {
         {renderElements}
       </div>
 
-      <DaySummaryForm 
+      <DaySummaryForm
         isOpen={!!summaryModalDay}
         date={summaryModalDay}
-        onClose={() => setSummaryModalDay(null)}
+        onClose={() => {
+          setSummaryModalDay(null);
+          refreshDaySummaries();
+        }}
       />
     </div>
   );

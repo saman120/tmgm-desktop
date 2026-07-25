@@ -6,13 +6,8 @@ import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import { taskAPI } from './services/api';
+import { getLocalDayKey } from './utils/dateUtils';
 import './App.css';
-
-// Unified date formatter to prevent key mismatches
-const getLocalDayKey = (date) => {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
 
 function App() {
   const [tasks, setTasks] = useState([]);

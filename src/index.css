@@ -20,7 +20,6 @@ html {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   color: var(--text-main);
   line-height: 1.6;
   margin: 0;
@@ -115,7 +114,7 @@ p {
 
 /* Focus styles for accessibility */
 *:focus {
-  outline: 2px solid #007AFF;
+  outline: 2px solid var(--brand-primary);
   outline-offset: 2px;
 }
 
@@ -124,7 +123,7 @@ p {
 }
 
 *:focus-visible {
-  outline: 2px solid #007AFF;
+  outline: 2px solid var(--brand-primary);
   outline-offset: 2px;
 }
 
@@ -139,30 +138,7 @@ p {
   color: var(--text-main);
 }
 
-/* Scrollbar styles */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  transition: background 0.2s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
+/* Scrollbar styles live in App.css (theme-aware) */
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {

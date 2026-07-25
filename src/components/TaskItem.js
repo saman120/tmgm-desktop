@@ -1,5 +1,6 @@
 // src/components/TaskItem.js
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { parseTaskShorthand } from '../utils/taskDescriptionParser';
 import './TaskItem.css';
 
 const TaskItem = ({ 
@@ -60,23 +61,7 @@ const TaskItem = ({
     if (trimmedValue && trimmedValue !== task.description) {
       try {
         setIsLoading(true);
-        const data = { description: trimmedValue };
-        const split = trimmedValue.split('###');
-        if (split[1] ) {
-          const splitComma = split[1].split(',');
-          const distractionCount = parseInt(splitComma[0], 10);
-          const inProgressAt = splitComma[1] && new Date(new Date().toISOString().split('T')[0]+'T'+splitComma[1]);
-          const completedAt = splitComma[2] && new Date(new Date().toISOString().split('T')[0]+'T'+splitComma[2]);
-          if( distractionCount >= 0){
-            data.distractionCount = distractionCount;
-          } 
-          if(inProgressAt){
-            data.inProgressAt = inProgressAt;
-          }
-          if(completedAt){
-            data.completedAt = completedAt;
-          }
-        }
+        const data = parseTaskShorthand(trimmedValue);
         await onTaskUpdate(task._id, data);
       } catch (error) {
         console.error('Failed to update description:', error);

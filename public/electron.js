@@ -5,7 +5,6 @@ const isDev = process.env.ELECTRON_IS_DEV === 'true';
 
 let mainWindow;
 let tray;
-let notificationTimer;
 
 // Create the main window
 function createWindow() {
@@ -41,18 +40,11 @@ function createWindow() {
     mainWindow.once('ready-to-show', () => {
         console.log("ready to show");
         mainWindow.show();
-        
-        // Setup notification timer after window is ready
-        // console.log("notification timer: call");
-        // setupNotificationTimer();
     });
 
     // Handle window closed
     mainWindow.on('closed', () => {
         mainWindow = null;
-        if (notificationTimer) {
-            clearInterval(notificationTimer);
-        }
     });
 
     // Hide to tray instead of closing on macOS
@@ -120,25 +112,6 @@ function createTray() {
     tray.on('right-click', () => {
         tray.popUpContextMenu();
     });
-}
-
-// Setup notification timer (5 minutes = 300000ms)
-function setupNotificationTimer() {
-    // Clear existing timer
-    if (notificationTimer) {
-        console.log("notification timer: cleared");
-        clearInterval(notificationTimer);
-    }
-    
-    setTimeout(()=>{
-        notificationTimer = setInterval(() => {
-            console.log("notification timer: execution");
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                console.log("notification timer: execution 2");
-                mainWindow.webContents.send('check-in-progress-task');
-            }
-        }, 300000); // 5 minutes
-    }, (5 - (new Date(new Date().setMinutes(new Date().getMinutes()+5)).getMinutes() % 5)) * 60000)
 }
 
 // IPC handlers
@@ -278,9 +251,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
     app.isQuitting = true;
-    if (notificationTimer) {
-        clearInterval(notificationTimer);
-    }
 });
 
 // Security: Prevent new window creation
