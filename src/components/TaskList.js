@@ -17,6 +17,26 @@ const playBlipSound = () => {
   }
 };
 
+// Official working window used for the day divider's completed/expected slot count
+const OFFICIAL_START_HOUR = 9;
+const OFFICIAL_END_HOUR = 18; // 6 PM
+const SLOTS_PER_OFFICIAL_HOUR = 8;
+const OFFICIAL_HOURS_COUNT = OFFICIAL_END_HOUR - OFFICIAL_START_HOUR;
+const TOTAL_EXPECTED_DAILY_SLOTS = SLOTS_PER_OFFICIAL_HOUR * OFFICIAL_HOURS_COUNT;
+
+// How many official hours have started so far: 0 before the window opens, growing by
+// one each official hour, capped at the full count once the window has closed. Past
+// days have the whole window behind them, so they're always compared against the full total.
+// `referenceTime` must be the actual current clock time, not the (often midnight) date
+// being rendered, so "today" only counts hours that have really elapsed.
+const getOfficialHoursElapsed = (referenceTime, isToday) => {
+  if (!isToday) return OFFICIAL_HOURS_COUNT;
+  const hour = referenceTime.getHours();
+  if (hour < OFFICIAL_START_HOUR) return 0;
+  if (hour >= OFFICIAL_END_HOUR) return OFFICIAL_HOURS_COUNT;
+  return Math.min(OFFICIAL_HOURS_COUNT, hour - OFFICIAL_START_HOUR + 1);
+};
+
 const TaskList = ({ 
   tasks,
   stats, 
@@ -257,7 +277,9 @@ const TaskList = ({
       const dayStyle = getDailyStyle(dailyAvg, isWeekend, isEarlyMorningNeutral);
       const isCollapsed = collapsedGroups[dayKey] ?? !isToday;
 
-      const statsText = ` • ${dayStats.totalCompleted} slots (${dailyAvg.toFixed(1)}/hr)`;
+      const expectedSlotsSoFar = SLOTS_PER_OFFICIAL_HOUR * getOfficialHoursElapsed(currentTime, isToday);
+      const remainingSlots = Math.max(0, expectedSlotsSoFar - dayStats.totalCompleted);
+      const statsText = ` • ${dayStats.totalCompleted}/${expectedSlotsSoFar} slots (${remainingSlots} remaining)`;
       const hasSummary = !!daySummaries[dayKey];
 
       elements.push(
@@ -266,7 +288,7 @@ const TaskList = ({
                 className="time-divider-text day-text"
                 style={{ ...dayStyle, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
                 onClick={() => toggleGroup(dayKey, !isToday)}
-                title={`Daily Avg: ${dailyAvg.toFixed(1)} slots/hr (over ${hoursElapsed.toFixed(1)} hrs)`}
+                title={`${dayStats.totalCompleted} of ${expectedSlotsSoFar} expected slots so far (official ${OFFICIAL_START_HOUR}am-${OFFICIAL_END_HOUR - 12}pm, full-day target ${TOTAL_EXPECTED_DAILY_SLOTS}), ${remainingSlots} remaining • ${dailyAvg.toFixed(1)} slots/hr avg (over ${hoursElapsed.toFixed(1)} hrs)`}
               >
                   <span>{isCollapsed ? '▶ ' : '▼ '} {displayDate}{statsText}</span>
 
