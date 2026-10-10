@@ -74,7 +74,7 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="What needs to be done? (~2 = 10 min estimate · Big task >> step 1; step 2)"
+            placeholder="What needs to be done?  ·  ___at yesterday/14, ___dist 2, Task  ·  ~2 = 10 min  ·  Goal >> a; b"
             className="task-input"
             maxLength={500}
             required

@@ -25,7 +25,6 @@ const TaskItem = ({
   onDescriptionUpdate,
   onDelete,
   onTaskUpdate, 
-  onLogPast,
   draggable,
   index,
   onDragStart,
@@ -330,14 +329,6 @@ const TaskItem = ({
               title={`Estimation accuracy: estimated ${estimatedSlots * SLOT_MINUTES}m, took ${Math.round(getActualMinutes(task))}m`}
             >
               <span className="status-icon">🎯</span> {Math.round(estimationAccuracy * 100)}%
-            </button>}
-
-            {onLogPast && <button
-              className='delete-button'
-              title={task.status === 'completed' ? 'Edit start/end times' : 'Log as done earlier (pick when you did it)'}
-              onClick={() => onLogPast(task)}
-            >
-              <span className="status-icon">🕘 </span>
             </button>}
 
             {task.status !== 'completed' && <button className='delete-button' title="Set completed" onClick={() => handleStatusClick('completed')}>

@@ -4,8 +4,6 @@ import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import DaySummaryForm from './DaySummaryForm'; 
 import ProgressInsights from './ProgressInsights';
-import HourQuickAdd from './HourQuickAdd';
-import { parseTaskInput } from '../utils/taskDescriptionParser';
 import { taskAPI } from '../services/api';
 import { getLocalDayKey, formatDayLabel, formatShortDate } from '../utils/dateUtils';
 import {
@@ -19,8 +17,7 @@ import {
   summarizeBucket,
   formatPercent,
   getScoreStyle,
-  getTaskBucketTime,
-  buildHourEntries
+  getTaskBucketTime
 } from '../utils/productivity';
 import './TaskList.css';
 
@@ -44,8 +41,6 @@ const TaskList = ({
   onReorder,
   onTaskUpdate,
   onShowRecentToggle,
-  onLogPast,
-  onQuickAdd,
   showRecent
 }) => {
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -58,7 +53,6 @@ const TaskList = ({
   const [summaryModalDay, setSummaryModalDay] = useState(null);
   const [daySummaries, setDaySummaries] = useState({});
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
-  const [quickAddHourKey, setQuickAddHourKey] = useState(null);
   const closeInsights = useCallback(() => setIsInsightsOpen(false), []);
 
   const [isBreathingLoading, setIsBreathingLoading] = useState(false);
@@ -224,20 +218,6 @@ const TaskList = ({
     resetDrag();
   }, [resetDrag]);
 
-  const onQuickAddRef = useRef(onQuickAdd);
-  onQuickAddRef.current = onQuickAdd;
-
-  const openQuickAdd = useCallback((hourKey) => {
-    setQuickAddHourKey(hourKey);
-    setCollapsedGroups(prev => (prev[hourKey] ? { ...prev, [hourKey]: false } : prev));
-  }, []);
-  const closeQuickAdd = useCallback(() => setQuickAddHourKey(null), []);
-
-  const handleQuickAdd = useCallback(
-    (hourDate, text) => onQuickAddRef.current(buildHourEntries(parseTaskInput(text), hourDate, tasksRef.current)),
-    []
-  );
-
   const handleBreathingExercise = async () => {
     const today = getLocalDayKey(currentTime);
     setIsBreathingLoading(true);
@@ -390,16 +370,6 @@ const TaskList = ({
                 title={`${isOffTime ? `Off-hours slots: ${hourStats.totalCompleted}` : `Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}\n${hourMetricsTitle}`}
               >
                   {isCollapsed ? '▶ ' : '▼ '} {displayHour} {ampm}{statsText}
-                  <button
-                    className="hour-add-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openQuickAdd(hourKey);
-                    }}
-                    title={`Log a task done at ${displayHour} ${ampm}`}
-                  >
-                    ＋
-                  </button>
               </span>
           </div>
       );
@@ -434,20 +404,6 @@ const TaskList = ({
         hours.get(hour).push({ task, index, isFirst: false });
     });
 
-    // Empty hours are listed too (today: up to now; past days: the official window)
-    // so missed work can be logged straight into them.
-    const getVisibleHours = (dayStart, dayKey, dataHours) => {
-        const hours = new Set(dataHours);
-        if (dayKey === todayKey) {
-            const nowHour = currentTime.getHours();
-            for (let h = OFFICIAL_START_HOUR; h <= nowHour; h++) hours.add(h);
-            hours.add(nowHour);
-        } else if (dayStart < todayStart) {
-            for (let h = OFFICIAL_START_HOUR; h < OFFICIAL_END_HOUR; h++) hours.add(h);
-        }
-        return [...hours].sort((a, b) => b - a);
-    };
-
     const dayIter = new Date(newestDayMs);
     while (dayIter.getTime() >= oldestDayMs) {
         const dayKey = getLocalDayKey(dayIter);
@@ -456,24 +412,14 @@ const TaskList = ({
         const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== todayKey);
         if (!isDayCollapsed) {
             const hoursWithTasks = completedByDay.get(dayKey) || new Map();
-            getVisibleHours(dayIter, dayKey, hoursWithTasks.keys()).forEach(hour => {
+            [...hoursWithTasks.keys()].sort((a, b) => b - a).forEach(hour => {
                 const hourDate = new Date(dayIter);
                 hourDate.setHours(hour, 0, 0, 0);
                 const hourKey = `${dayKey}-${hour}`;
                 pushHourDivider(hourDate, hourKey);
 
                 if (collapsedGroups[hourKey] ?? false) return;
-                if (quickAddHourKey === hourKey) {
-                    elements.push(
-                        <HourQuickAdd
-                            key={`add-${hourKey}`}
-                            hourDate={hourDate}
-                            onSubmit={handleQuickAdd}
-                            onClose={closeQuickAdd}
-                        />
-                    );
-                }
-                (hoursWithTasks.get(hour) || []).forEach(row => elements.push(row));
+                hoursWithTasks.get(hour).forEach(row => elements.push(row));
             });
         }
         dayIter.setDate(dayIter.getDate() - 1);
@@ -481,7 +427,7 @@ const TaskList = ({
 
     return elements;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, stats, collapsedGroups, showRecent, daySummaries, currentMinuteKey, quickAddHourKey]);
+  }, [tasks, stats, collapsedGroups, showRecent, daySummaries, currentMinuteKey]);
 
   const renderElements = useMemo(() => layout.map(row => {
     if (React.isValidElement(row)) return row;
@@ -500,7 +446,6 @@ const TaskList = ({
         onDelete={onDelete}
         draggable={true}
         onTaskUpdate={onTaskUpdate}
-        onLogPast={onLogPast}
         index={index}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
@@ -510,7 +455,7 @@ const TaskList = ({
         dragOverClass={dragOverClass}
       />
     );
-  }), [layout, draggedIndex, dragOverIndex, onStatusToggle, onDescriptionUpdate, onDelete, onTaskUpdate, onLogPast, handleDragStart, handleDragOver, handleDrop, resetDrag]);
+  }), [layout, draggedIndex, dragOverIndex, onStatusToggle, onDescriptionUpdate, onDelete, onTaskUpdate, handleDragStart, handleDragOver, handleDrop, resetDrag]);
 
   if (tasks.length === 0) {
     return <EmptyState onRefresh={onRefresh} />;

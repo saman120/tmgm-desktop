@@ -5,9 +5,8 @@ import AddTaskForm from './components/AddTaskForm';
 import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
-import PastEntryForm from './components/PastEntryForm';
 import { taskAPI } from './services/api';
-import { buildTaskStats, getStatusTransitionUpdates } from './utils/productivity';
+import { buildTaskStats, getStatusTransitionUpdates, resolveLoggedTimes } from './utils/productivity';
 import './App.css';
 
 const STATUS_ORDER = { 'in-progress': 0, 'pending': 1, backlog: 1.5, 'hold': 2, 'completed': 3 };
@@ -35,8 +34,6 @@ function App() {
   const [error, setError] = useState(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showRecent, setShowRecent] = useState(true);
-  // { task }: edit that task's times, or mark it done at an earlier time.
-  const [pastEntry, setPastEntry] = useState(null);
   // Callbacks read the latest tasks through a ref (and update via functional setState)
   // so their identities stay stable and memoized task rows don't all re-render.
   const tasksRef = useRef(tasks);
@@ -64,7 +61,10 @@ function App() {
   const createTask = useCallback(async (dataOrList) => {
     try {
       setError(null);
-      const payloads = Array.isArray(dataOrList) ? dataOrList : [dataOrList];
+      const payloads = resolveLoggedTimes(
+        Array.isArray(dataOrList) ? dataOrList : [dataOrList],
+        tasksRef.current
+      );
       const newTasks = [];
       for (const data of payloads) {
         newTasks.push(await taskAPI.createTask({ status: showRecent ? 'pending' : 'hold', title: 'Example', ...data }));
@@ -81,6 +81,16 @@ function App() {
     try {
       setError(null);
       const currentTask = tasksRef.current.find(task => task._id === taskId);
+      // "___at ...," typed into an inline edit backdates/completes the task. Its
+      // createdAt is genuine, so it isn't flagged as backfilled (still counts for "planned").
+      if (updates.loggedAt) {
+        const [resolved] = resolveLoggedTimes(
+          [{ ...(currentTask?.estimatedSlots ? { estimatedSlots: currentTask.estimatedSlots } : {}), ...updates }],
+          tasksRef.current.filter(task => task._id !== taskId)
+        );
+        const { backfilled, ...timing } = resolved;
+        updates = timing;
+      }
       const updatedTask = await taskAPI.updateTask(taskId, {
         ...getStatusTransitionUpdates(currentTask, updates.status),
         ...updates
@@ -172,8 +182,7 @@ function App() {
   const taskStats = useMemo(() => buildTaskStats(tasks), [tasks]);
 
   const clearError = useCallback(() => setError(null), []);
-  const openPastEntry = useCallback((task) => setPastEntry({ task }), []);
-  const closePastEntry = useCallback(() => setPastEntry(null), []);
+
   // Switching views can mount hundreds of rows; keep the click itself responsive.
   const toggleShowRecent = useCallback(() => startTransition(() => setShowRecent(prev => !prev)), []);
 
@@ -196,8 +205,6 @@ function App() {
             onReorder={handleReorder}
             onRefresh={loadTasks}
             onShowRecentToggle={toggleShowRecent}
-            onLogPast={openPastEntry}
-            onQuickAdd={createTask}
             showRecent={showRecent}
           />
         )}
@@ -211,12 +218,6 @@ function App() {
           onSubmit={createTask}
         />
       </footer>
-      <PastEntryForm
-        isOpen={!!pastEntry}
-        task={pastEntry?.task || null}
-        onClose={closePastEntry}
-        onUpdate={updateTask}
-      />
     </div>
   );
 }

@@ -295,3 +295,36 @@ export const buildHourEntries = (payloads, hourDate, existingTasks, now = new Da
     };
   });
 };
+
+// Converts parsed `loggedAt` markers (from "___at ...,") into completed-task timing.
+// Exact times start there (consecutive steps with the same time run back to back);
+// hour-only times go into that hour's next free slots via buildHourEntries. Payloads
+// without `loggedAt` pass through unchanged.
+export const resolveLoggedTimes = (payloads, existingTasks, now = new Date()) => {
+  const created = [];
+  const nowMs = now.getTime();
+  let chain = null; // { key, end } for back-to-back exact steps
+
+  return payloads.map(({ loggedAt, ...payload }) => {
+    if (!loggedAt) return payload;
+
+    let entry;
+    if (loggedAt.exact) {
+      const durationMs = getEstimatedSlots(payload) * SLOT_MINUTES * 60000;
+      const key = loggedAt.date.getTime();
+      const start = Math.min(chain && chain.key === key ? chain.end : key, nowMs - durationMs);
+      chain = { key, end: start + durationMs };
+      entry = {
+        status: 'completed',
+        inProgressAt: new Date(start).toISOString(),
+        completedAt: new Date(start + durationMs).toISOString(),
+        backfilled: true,
+        ...payload,
+      };
+    } else {
+      [entry] = buildHourEntries([payload], loggedAt.date, existingTasks.concat(created), now);
+    }
+    created.push(entry);
+    return entry;
+  });
+};

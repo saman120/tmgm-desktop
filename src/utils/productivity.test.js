@@ -15,6 +15,7 @@ import {
   TOTAL_EXPECTED_DAILY_SLOTS,
   WORK_SLOTS_PER_HOUR,
   buildHourEntries,
+  resolveLoggedTimes,
 } from './productivity';
 
 // 2026-10-07 is a Wednesday.
@@ -184,5 +185,34 @@ describe('buildHourEntries', () => {
     const explicit = at(7, 10, 33);
     const [entry] = buildHourEntries([{ inProgressAt: explicit }], hour, [], at(7, 14));
     expect(entry.inProgressAt).toBe(explicit);
+  });
+});
+
+describe('resolveLoggedTimes', () => {
+  const now = at(8, 15, 40);
+
+  it('passes payloads without loggedAt through', () => {
+    expect(resolveLoggedTimes([{ description: 'x' }], [], now)).toEqual([{ description: 'x' }]);
+  });
+
+  it('starts exact times there and chains steps that share the time', () => {
+    const at1430 = { date: at(8, 14, 30), exact: true };
+    const [a, b] = resolveLoggedTimes([{ loggedAt: at1430 }, { loggedAt: at1430, estimatedSlots: 2 }], [], now);
+    expect([a.inProgressAt, a.completedAt, b.inProgressAt, b.completedAt].map(t => new Date(t).getMinutes())).toEqual([30, 35, 35, 45]);
+    expect(a).toMatchObject({ status: 'completed', backfilled: true });
+    expect(a.loggedAt).toBeUndefined();
+  });
+
+  it('slots hour-only times after earlier entries in the same batch', () => {
+    const hour14 = { date: at(8, 14), exact: false };
+    const existing = [completedTask({ inProgressAt: at(8, 14, 15), completedAt: at(8, 14, 20) })];
+    const [a, b] = resolveLoggedTimes([{ loggedAt: hour14 }, { loggedAt: hour14 }], existing, now);
+    expect(new Date(a.inProgressAt).getMinutes()).toBe(20);
+    expect(new Date(b.inProgressAt).getMinutes()).toBe(25);
+  });
+
+  it('never lets an exact entry end in the future', () => {
+    const [entry] = resolveLoggedTimes([{ loggedAt: { date: at(8, 15, 38), exact: true } }], [], now);
+    expect(new Date(entry.completedAt).getTime()).toBe(now.getTime());
   });
 });

@@ -15,9 +15,3 @@ const weekdayDayFormat = new Intl.DateTimeFormat(undefined, { weekday: 'short', 
 export const formatDayLabel = (date) => dayLabelFormat.format(date);
 export const formatShortDate = (date) => shortDateFormat.format(date);
 export const formatWeekdayDay = (date) => weekdayDayFormat.format(date);
-
-// Local "YYYY-MM-DDTHH:MM" for <input type="datetime-local">.
-export const toDateTimeInputValue = (date) => {
-  const d = new Date(date);
-  return `${getLocalDayKey(d)}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-};
