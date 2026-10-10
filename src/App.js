@@ -35,7 +35,7 @@ function App() {
   const [error, setError] = useState(null);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [showRecent, setShowRecent] = useState(true);
-  // { task } edits/completes that task in the past; { task: null } logs new past work.
+  // { task }: edit that task's times, or mark it done at an earlier time.
   const [pastEntry, setPastEntry] = useState(null);
   // Callbacks read the latest tasks through a ref (and update via functional setState)
   // so their identities stay stable and memoized task rows don't all re-render.
@@ -172,7 +172,7 @@ function App() {
   const taskStats = useMemo(() => buildTaskStats(tasks), [tasks]);
 
   const clearError = useCallback(() => setError(null), []);
-  const openPastEntry = useCallback((task = null) => setPastEntry({ task }), []);
+  const openPastEntry = useCallback((task) => setPastEntry({ task }), []);
   const closePastEntry = useCallback(() => setPastEntry(null), []);
   // Switching views can mount hundreds of rows; keep the click itself responsive.
   const toggleShowRecent = useCallback(() => startTransition(() => setShowRecent(prev => !prev)), []);
@@ -197,6 +197,7 @@ function App() {
             onRefresh={loadTasks}
             onShowRecentToggle={toggleShowRecent}
             onLogPast={openPastEntry}
+            onQuickAdd={createTask}
             showRecent={showRecent}
           />
         )}
@@ -208,14 +209,12 @@ function App() {
           onOpen={() => setIsAddingTask(true)}
           onClose={() => setIsAddingTask(false)}
           onSubmit={createTask}
-          onLogPast={openPastEntry}
         />
       </footer>
       <PastEntryForm
         isOpen={!!pastEntry}
         task={pastEntry?.task || null}
         onClose={closePastEntry}
-        onCreate={createTask}
         onUpdate={updateTask}
       />
     </div>

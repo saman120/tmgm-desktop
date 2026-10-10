@@ -1,7 +1,7 @@
-// src/components/PastEntryForm.js - Log work that was done earlier (an hour ago,
-// yesterday...) or correct the timing of an existing task.
-import React, { useState, useEffect, useRef } from 'react';
-import { parseTaskInput } from '../utils/taskDescriptionParser';
+// src/components/PastEntryForm.js - Mark an existing task as done at an earlier time,
+// or correct a completed task's start/end. (New past work is logged inline from the
+// hour dividers — see HourQuickAdd.)
+import React, { useState, useEffect } from 'react';
 import { toDateTimeInputValue } from '../utils/dateUtils';
 import { SLOT_MINUTES, getEstimatedSlots } from '../utils/productivity';
 import './PastEntryForm.css';
@@ -22,35 +22,23 @@ const PRESETS = [
   { label: '−1 day', offsetMinutes: 24 * 60 },
 ];
 
-// `task` set → edit/complete that task; otherwise log new completed task(s).
-const PastEntryForm = ({ isOpen, task, onClose, onCreate, onUpdate }) => {
-  const [description, setDescription] = useState('');
+const PastEntryForm = ({ isOpen, task, onClose, onUpdate }) => {
   const [startValue, setStartValue] = useState('');
   const [duration, setDuration] = useState(SLOT_MINUTES);
   const [distractions, setDistractions] = useState(0);
   const [error, setError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const descriptionRef = useRef(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !task) return;
     setError(null);
     setIsSaving(false);
-    if (task) {
-      const start = task.inProgressAt ? new Date(task.inProgressAt) : floorToSlot(Date.now() - 60 * MINUTE);
-      const end = task.completedAt ? new Date(task.completedAt) : null;
-      const minutes = end && end > start ? Math.round((end - start) / MINUTE) : getEstimatedSlots(task) * SLOT_MINUTES;
-      setDescription(task.description);
-      setStartValue(toDateTimeInputValue(start));
-      setDuration(minutes);
-      setDistractions(task.distractionCount || 0);
-    } else {
-      setDescription('');
-      setStartValue(toDateTimeInputValue(floorToSlot(Date.now() - 60 * MINUTE)));
-      setDuration(SLOT_MINUTES);
-      setDistractions(0);
-      setTimeout(() => descriptionRef.current?.focus(), 0);
-    }
+    const start = task.inProgressAt ? new Date(task.inProgressAt) : floorToSlot(Date.now() - 60 * MINUTE);
+    const end = task.completedAt ? new Date(task.completedAt) : null;
+    const minutes = end && end > start ? Math.round((end - start) / MINUTE) : getEstimatedSlots(task) * SLOT_MINUTES;
+    setStartValue(toDateTimeInputValue(start));
+    setDuration(minutes);
+    setDistractions(task.distractionCount || 0);
   }, [isOpen, task]);
 
   useEffect(() => {
@@ -60,7 +48,7 @@ const PastEntryForm = ({ isOpen, task, onClose, onCreate, onUpdate }) => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !task) return null;
 
   const applyPreset = (offsetMinutes) => {
     const base = offsetMinutes >= 24 * 60 && startValue ? new Date(startValue) : new Date();
@@ -70,42 +58,24 @@ const PastEntryForm = ({ isOpen, task, onClose, onCreate, onUpdate }) => {
     setStartValue(toDateTimeInputValue(target));
   };
 
-  const payloads = task ? [] : parseTaskInput(description.trim() || ' ');
-  const stepCount = task ? 1 : Math.max(1, payloads.length);
   const durationMinutes = Math.max(1, Number(duration) || SLOT_MINUTES);
   const start = startValue ? new Date(startValue) : null;
-  const end = start ? new Date(start.getTime() + stepCount * durationMinutes * MINUTE) : null;
+  const end = start ? new Date(start.getTime() + durationMinutes * MINUTE) : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!start || Number.isNaN(start.getTime())) return setError('Pick when you started.');
     if (start.getTime() > Date.now()) return setError('Start time is in the future.');
-    if (!task && !description.trim()) return setError('Describe what you did.');
 
     const distractionCount = Math.max(0, parseInt(distractions, 10) || 0);
     setIsSaving(true);
     try {
-      if (task) {
-        await onUpdate(task._id, {
-          status: 'completed',
-          inProgressAt: start.toISOString(),
-          completedAt: end.toISOString(),
-          distractionCount,
-        });
-      } else {
-        // Steps of a breakdown are laid out back to back from the start time.
-        await onCreate(payloads.map((payload, i) => {
-          const stepStart = new Date(start.getTime() + i * durationMinutes * MINUTE);
-          return {
-            ...payload,
-            status: 'completed',
-            inProgressAt: stepStart.toISOString(),
-            completedAt: new Date(stepStart.getTime() + durationMinutes * MINUTE).toISOString(),
-            distractionCount: i === 0 ? distractionCount : 0,
-            backfilled: true,
-          };
-        }));
-      }
+      await onUpdate(task._id, {
+        status: 'completed',
+        inProgressAt: start.toISOString(),
+        completedAt: end.toISOString(),
+        distractionCount,
+      });
       onClose();
     } catch (err) {
       console.error('Failed to save past entry:', err);
@@ -120,26 +90,12 @@ const PastEntryForm = ({ isOpen, task, onClose, onCreate, onUpdate }) => {
     <div className="summary-modal-overlay" onClick={!isSaving ? onClose : undefined}>
       <div className="summary-modal past-entry-modal" onClick={e => e.stopPropagation()}>
         <div className="summary-modal-header">
-          <h3>{task ? (task.status === 'completed' ? 'Edit times' : 'Log as done earlier') : 'Log past task'}</h3>
+          <h3>{task.status === 'completed' ? 'Edit times' : 'Log as done earlier'}</h3>
           <button className="close-btn" onClick={onClose} disabled={isSaving}>✕</button>
         </div>
 
         <form className="past-entry-form" onSubmit={handleSubmit}>
-          {task ? (
-            <div className="past-entry-task">{task.description}</div>
-          ) : (
-            <label className="past-entry-field">
-              <span className="field-label">What did you do?</span>
-              <input
-                ref={descriptionRef}
-                className="summary-input"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Task, or Big task >> step 1; step 2"
-                maxLength={500}
-              />
-            </label>
-          )}
+          <div className="past-entry-task">{task.description}</div>
 
           <div className="past-entry-field">
             <span className="field-label">Started at</span>
@@ -161,7 +117,7 @@ const PastEntryForm = ({ isOpen, task, onClose, onCreate, onUpdate }) => {
 
           <div className="past-entry-row">
             <label className="past-entry-field">
-              <span className="field-label">Minutes{stepCount > 1 ? ' per step' : ''}</span>
+              <span className="field-label">Minutes</span>
               <input
                 type="number"
                 min={1}
@@ -186,7 +142,6 @@ const PastEntryForm = ({ isOpen, task, onClose, onCreate, onUpdate }) => {
 
           {start && !Number.isNaN(start.getTime()) && (
             <p className="past-entry-preview">
-              {stepCount > 1 ? `${stepCount} tasks, ` : ''}
               {start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
               {' '}{formatTime(start)} – {formatTime(end)}
             </p>

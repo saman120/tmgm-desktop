@@ -60,20 +60,3 @@
   color: #ff3b30;
   font-size: 13px;
 }
-
-.log-past-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.log-past-button:hover {
-  background: var(--hover-bg);
-  color: var(--text-main);
-}

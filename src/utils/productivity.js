@@ -259,3 +259,39 @@ export const getScoreStyle = (score) => {
   if (score >= 35) return { background: 'var(--stat-red-1)', color: 'var(--stat-text-dark)' };
   return { background: 'var(--stat-red-2)', color: 'var(--stat-text-dark)' };
 };
+
+// Turns quick-added payloads for an hour into completed tasks laid into that hour's
+// next free 5-minute slots: after the hour's latest completed task (or from the work
+// phase at :15), kept inside the hour and never ending in the future. Explicit
+// times from the ### shorthand win.
+export const buildHourEntries = (payloads, hourDate, existingTasks, now = new Date()) => {
+  const MINUTE_MS = 60000;
+  const hourStart = new Date(hourDate);
+  hourStart.setMinutes(0, 0, 0);
+  const hourStartMs = hourStart.getTime();
+  const hourEndMs = hourStartMs + 60 * MINUTE_MS;
+  const hourKey = `${getLocalDayKey(hourStart)}-${hourStart.getHours()}`;
+  const nowMs = now.getTime();
+
+  let cursor = hourStartMs + WORK_PHASE_START_MINUTE * MINUTE_MS;
+  existingTasks.forEach(task => {
+    const derived = getTaskDerived(task);
+    if (!derived || derived.hourKey !== hourKey) return;
+    const end = toMs(task.completedAt) ?? toMs(getTaskBucketTime(task)) + SLOT_MINUTES * MINUTE_MS;
+    if (end > cursor) cursor = end;
+  });
+
+  return payloads.map(payload => {
+    const durationMs = getEstimatedSlots(payload) * SLOT_MINUTES * MINUTE_MS;
+    const start = Math.max(hourStartMs, Math.min(cursor, hourEndMs - MINUTE_MS, nowMs - durationMs));
+    const end = Math.min(start + durationMs, Math.max(nowMs, start));
+    cursor = start + durationMs;
+    return {
+      status: 'completed',
+      inProgressAt: new Date(start).toISOString(),
+      completedAt: new Date(end).toISOString(),
+      backfilled: true,
+      ...payload,
+    };
+  });
+};

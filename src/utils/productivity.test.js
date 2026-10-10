@@ -14,6 +14,7 @@ import {
   summarizeBucket,
   TOTAL_EXPECTED_DAILY_SLOTS,
   WORK_SLOTS_PER_HOUR,
+  buildHourEntries,
 } from './productivity';
 
 // 2026-10-07 is a Wednesday.
@@ -150,5 +151,38 @@ describe('computeProductivityScore', () => {
     expect(computeProductivityScore({ completed: 8, expected: 8, focus: 0.5, accuracy: null })).toBe(83);
     expect(computeProductivityScore({ completed: 3, expected: 0, focus: 1, accuracy: null })).toBe(100);
     expect(computeProductivityScore({ completed: 0, expected: 0, focus: null, accuracy: null })).toBeNull();
+  });
+});
+
+describe('buildHourEntries', () => {
+  const hour = at(7, 10);
+
+  it('starts at the work phase when the hour is empty and lays steps back to back', () => {
+    const entries = buildHourEntries([{ description: 'a' }, { description: 'b', estimatedSlots: 2 }], hour, [], at(7, 14));
+    expect(entries.map(e => [new Date(e.inProgressAt).getMinutes(), new Date(e.completedAt).getMinutes()])).toEqual([[15, 20], [20, 30]]);
+    expect(entries[0]).toMatchObject({ status: 'completed', backfilled: true, description: 'a' });
+  });
+
+  it('continues after the latest task already logged in that hour, staying inside the hour', () => {
+    const existing = [completedTask({ inProgressAt: at(7, 10, 40), completedAt: at(7, 10, 50) }), completedTask({ inProgressAt: at(7, 11, 20), completedAt: at(7, 11, 25) })];
+    const [first, second, third] = buildHourEntries([{}, {}, {}], hour, existing, at(7, 14));
+    expect(new Date(first.inProgressAt).getMinutes()).toBe(50);
+    expect(new Date(second.inProgressAt).getMinutes()).toBe(55);
+    expect(new Date(third.inProgressAt).getHours()).toBe(10);
+    expect(new Date(third.inProgressAt).getMinutes()).toBe(59);
+  });
+
+  it('never ends in the future for the current hour', () => {
+    const [entry] = buildHourEntries([{}], hour, [], at(7, 10, 32));
+    expect(new Date(entry.inProgressAt).getMinutes()).toBe(15);
+    const [early] = buildHourEntries([{}], hour, [], at(7, 10, 2));
+    expect(new Date(early.inProgressAt).getMinutes()).toBe(0);
+    expect(new Date(early.completedAt).getTime()).toBe(at(7, 10, 2).getTime());
+  });
+
+  it('keeps explicit ### times', () => {
+    const explicit = at(7, 10, 33);
+    const [entry] = buildHourEntries([{ inProgressAt: explicit }], hour, [], at(7, 14));
+    expect(entry.inProgressAt).toBe(explicit);
   });
 });

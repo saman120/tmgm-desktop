@@ -4,6 +4,8 @@ import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import DaySummaryForm from './DaySummaryForm'; 
 import ProgressInsights from './ProgressInsights';
+import HourQuickAdd from './HourQuickAdd';
+import { parseTaskInput } from '../utils/taskDescriptionParser';
 import { taskAPI } from '../services/api';
 import { getLocalDayKey, formatDayLabel, formatShortDate } from '../utils/dateUtils';
 import {
@@ -16,7 +18,9 @@ import {
   getWeekKey,
   summarizeBucket,
   formatPercent,
-  getScoreStyle
+  getScoreStyle,
+  getTaskBucketTime,
+  buildHourEntries
 } from '../utils/productivity';
 import './TaskList.css';
 
@@ -41,6 +45,7 @@ const TaskList = ({
   onTaskUpdate,
   onShowRecentToggle,
   onLogPast,
+  onQuickAdd,
   showRecent
 }) => {
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -53,6 +58,7 @@ const TaskList = ({
   const [summaryModalDay, setSummaryModalDay] = useState(null);
   const [daySummaries, setDaySummaries] = useState({});
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const [quickAddHourKey, setQuickAddHourKey] = useState(null);
   const closeInsights = useCallback(() => setIsInsightsOpen(false), []);
 
   const [isBreathingLoading, setIsBreathingLoading] = useState(false);
@@ -218,6 +224,20 @@ const TaskList = ({
     resetDrag();
   }, [resetDrag]);
 
+  const onQuickAddRef = useRef(onQuickAdd);
+  onQuickAddRef.current = onQuickAdd;
+
+  const openQuickAdd = useCallback((hourKey) => {
+    setQuickAddHourKey(hourKey);
+    setCollapsedGroups(prev => (prev[hourKey] ? { ...prev, [hourKey]: false } : prev));
+  }, []);
+  const closeQuickAdd = useCallback(() => setQuickAddHourKey(null), []);
+
+  const handleQuickAdd = useCallback(
+    (hourDate, text) => onQuickAddRef.current(buildHourEntries(parseTaskInput(text), hourDate, tasksRef.current)),
+    []
+  );
+
   const handleBreathingExercise = async () => {
     const today = getLocalDayKey(currentTime);
     setIsBreathingLoading(true);
@@ -247,27 +267,12 @@ const TaskList = ({
   const layout = useMemo(() => {
     const elements = [];
 
-    let currentDayIter = new Date(currentTime);
-    currentDayIter.setHours(0, 0, 0, 0);
-
-    let oldestDateMs = currentDayIter.getTime();
-    if (!showRecent && tasks.length > 0) {
-        tasks.forEach(t => {
-           if (t.status === 'completed') {
-               const ts = t.inProgressAt || t.completedAt || t.updatedAt;
-               if (ts && Date.parse(ts) < oldestDateMs) {
-                   oldestDateMs = Date.parse(ts);
-               }
-           }
-        });
-    } else {
-        oldestDateMs = currentDayIter.getTime() - (14 * 24 * 60 * 60 * 1000);
-    }
-    const cutoffDay = new Date(oldestDateMs);
+    // Recent: at least the last 14 days; All: back to the oldest completed task
+    // (the grouping pass below extends the range to cover every completed task).
+    const cutoffDay = new Date(currentTime);
     cutoffDay.setHours(0, 0, 0, 0);
+    if (showRecent) cutoffDay.setDate(cutoffDay.getDate() - 14);
 
-    let lastDayKey = null;
-    let lastHourKey = null;
     let lastWeekKey = null;
 
     const pushWeekDivider = (dateObj, weekKey) => {
@@ -346,8 +351,6 @@ const TaskList = ({
           </div>
       );
 
-      lastDayKey = dayKey;
-      lastHourKey = null;
     };
 
     const pushHourDivider = (dateObj, hourKey) => {
@@ -387,11 +390,28 @@ const TaskList = ({
                 title={`${isOffTime ? `Off-hours slots: ${hourStats.totalCompleted}` : `Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}\n${hourMetricsTitle}`}
               >
                   {isCollapsed ? '▶ ' : '▼ '} {displayHour} {ampm}{statsText}
+                  <button
+                    className="hour-add-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openQuickAdd(hourKey);
+                    }}
+                    title={`Log a task done at ${displayHour} ${ampm}`}
+                  >
+                    ＋
+                  </button>
               </span>
           </div>
       );
-      lastHourKey = hourKey;
     };
+
+    // Group completed tasks by day and hour (tasks arrive newest first).
+    const todayStart = new Date(currentTime);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayKey = getLocalDayKey(currentTime);
+    const completedByDay = new Map();
+    let newestDayMs = todayStart.getTime();
+    let oldestDayMs = cutoffDay.getTime();
 
     tasks.forEach((task, index) => {
         if (task.status !== 'completed') {
@@ -399,53 +419,69 @@ const TaskList = ({
             return;
         }
 
-        const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
-        const taskDate = new Date(timestamp || currentTime);
-
+        const taskDate = new Date(getTaskBucketTime(task) || currentTime);
         const dayKey = getLocalDayKey(taskDate);
         const hour = taskDate.getHours();
-        const hourKey = `${dayKey}-${hour}`;
-
-        const taskDayStart = new Date(taskDate);
-        taskDayStart.setHours(0, 0, 0, 0);
-
-        while (currentDayIter > taskDayStart) {
-            const emptyDayKey = getLocalDayKey(currentDayIter);
-            if (emptyDayKey !== lastDayKey) {
-                pushDayDivider(currentDayIter, emptyDayKey);
-            }
-            currentDayIter.setDate(currentDayIter.getDate() - 1);
+        if (!completedByDay.has(dayKey)) {
+            completedByDay.set(dayKey, new Map());
+            const dayStart = new Date(taskDate);
+            dayStart.setHours(0, 0, 0, 0);
+            newestDayMs = Math.max(newestDayMs, dayStart.getTime());
+            oldestDayMs = Math.min(oldestDayMs, dayStart.getTime());
         }
-
-        if (dayKey !== lastDayKey) {
-            pushDayDivider(taskDate, dayKey);
-            currentDayIter.setDate(currentDayIter.getDate() - 1);
-        }
-
-        const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== getLocalDayKey(currentTime));
-
-        if (!isDayCollapsed && hourKey !== lastHourKey) {
-            pushHourDivider(taskDate, hourKey);
-        }
-
-        const isHourCollapsed = collapsedGroups[hourKey] ?? false;
-
-        if (!isDayCollapsed && !isHourCollapsed) {
-            elements.push({ task, index, isFirst: false });
-        }
+        const hours = completedByDay.get(dayKey);
+        if (!hours.has(hour)) hours.set(hour, []);
+        hours.get(hour).push({ task, index, isFirst: false });
     });
 
-    while (currentDayIter >= cutoffDay) {
-        const emptyDayKey = getLocalDayKey(currentDayIter);
-        if (emptyDayKey !== lastDayKey) {
-            pushDayDivider(currentDayIter, emptyDayKey);
+    // Empty hours are listed too (today: up to now; past days: the official window)
+    // so missed work can be logged straight into them.
+    const getVisibleHours = (dayStart, dayKey, dataHours) => {
+        const hours = new Set(dataHours);
+        if (dayKey === todayKey) {
+            const nowHour = currentTime.getHours();
+            for (let h = OFFICIAL_START_HOUR; h <= nowHour; h++) hours.add(h);
+            hours.add(nowHour);
+        } else if (dayStart < todayStart) {
+            for (let h = OFFICIAL_START_HOUR; h < OFFICIAL_END_HOUR; h++) hours.add(h);
         }
-        currentDayIter.setDate(currentDayIter.getDate() - 1);
+        return [...hours].sort((a, b) => b - a);
+    };
+
+    const dayIter = new Date(newestDayMs);
+    while (dayIter.getTime() >= oldestDayMs) {
+        const dayKey = getLocalDayKey(dayIter);
+        pushDayDivider(dayIter, dayKey);
+
+        const isDayCollapsed = collapsedGroups[dayKey] ?? (dayKey !== todayKey);
+        if (!isDayCollapsed) {
+            const hoursWithTasks = completedByDay.get(dayKey) || new Map();
+            getVisibleHours(dayIter, dayKey, hoursWithTasks.keys()).forEach(hour => {
+                const hourDate = new Date(dayIter);
+                hourDate.setHours(hour, 0, 0, 0);
+                const hourKey = `${dayKey}-${hour}`;
+                pushHourDivider(hourDate, hourKey);
+
+                if (collapsedGroups[hourKey] ?? false) return;
+                if (quickAddHourKey === hourKey) {
+                    elements.push(
+                        <HourQuickAdd
+                            key={`add-${hourKey}`}
+                            hourDate={hourDate}
+                            onSubmit={handleQuickAdd}
+                            onClose={closeQuickAdd}
+                        />
+                    );
+                }
+                (hoursWithTasks.get(hour) || []).forEach(row => elements.push(row));
+            });
+        }
+        dayIter.setDate(dayIter.getDate() - 1);
     }
 
     return elements;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, stats, collapsedGroups, showRecent, daySummaries, currentMinuteKey]);
+  }, [tasks, stats, collapsedGroups, showRecent, daySummaries, currentMinuteKey, quickAddHourKey]);
 
   const renderElements = useMemo(() => layout.map(row => {
     if (React.isValidElement(row)) return row;
