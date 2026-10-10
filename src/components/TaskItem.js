@@ -1,6 +1,13 @@
 // src/components/TaskItem.js
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { parseTaskShorthand } from '../utils/taskDescriptionParser';
+import {
+  SLOT_MINUTES,
+  MAX_ESTIMATED_SLOTS,
+  getEstimatedSlots,
+  getActualMinutes,
+  getEstimationAccuracy
+} from '../utils/productivity';
 import './TaskItem.css';
 
 const TaskItem = ({ 
@@ -142,6 +149,22 @@ const TaskItem = ({
     }
   };
 
+  const estimatedSlots = getEstimatedSlots(task);
+
+  const handleCycleEstimate = async () => {
+    if (!onTaskUpdate) return;
+    try {
+      setIsLoading(true);
+      await onTaskUpdate(task._id, { estimatedSlots: (estimatedSlots % MAX_ESTIMATED_SLOTS) + 1 });
+    } catch (error) {
+      console.error('Failed to update estimate:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const estimationAccuracy = task.status === 'completed' ? getEstimationAccuracy(task) : null;
+
   const openRemarksModal = () => {
     setCurrentRemarks(task.remarks || []);
     setNewRemarkText('');
@@ -260,6 +283,7 @@ const TaskItem = ({
                 onDoubleClick={handleDoubleClick}
                 title="Double-click to edit"
               >
+                {task.goal && <span className="task-goal" title={`Part of: ${task.goal}`}>{task.goal}</span>}
                 {task.description}
               </div>
             )}
@@ -281,6 +305,21 @@ const TaskItem = ({
               title={task.delayCount < 0 ? "Completed early" : "Completed late"}
             >
               <span className="status-icon">{task.delayCount < 0 ? '⚡' : '⏰'}</span> {Math.round(Math.abs(task.delayCount))}
+            </button>}
+
+            {task.status !== 'completed' && <button
+              className={`count-button${estimatedSlots > 1 ? ' count-button-highlight' : ''}`}
+              title={`Estimate: ${estimatedSlots} × ${SLOT_MINUTES}-min slot${estimatedSlots > 1 ? 's — consider breaking this into smaller tasks' : ''} (click to change)`}
+              onClick={handleCycleEstimate}
+            >
+              <span className="status-icon">⏳</span> {estimatedSlots * SLOT_MINUTES}m
+            </button>}
+
+            {estimationAccuracy !== null && <button
+              className="count-button count-button-highlight"
+              title={`Estimation accuracy: estimated ${estimatedSlots * SLOT_MINUTES}m, took ${Math.round(getActualMinutes(task))}m`}
+            >
+              <span className="status-icon">🎯</span> {Math.round(estimationAccuracy * 100)}%
             </button>}
 
             {task.status !== 'completed' && <button className='delete-button' title="Set completed" onClick={() => handleStatusClick('completed')}>

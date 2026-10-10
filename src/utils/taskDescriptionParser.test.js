@@ -1,4 +1,4 @@
-import { parseTaskShorthand } from './taskDescriptionParser';
+import { parseTaskShorthand, parseTaskInput } from './taskDescriptionParser';
 
 describe('parseTaskShorthand', () => {
   it('returns just the description when there is no ### shorthand', () => {
@@ -51,5 +51,42 @@ describe('parseTaskShorthand', () => {
     const result = parseTaskShorthand('Write report###2,09:00###extra');
     expect(result.distractionCount).toBe(2);
     expect(result.inProgressAt.getHours()).toBe(9);
+  });
+});
+
+describe('estimate shorthand (~N)', () => {
+  it('parses and strips a trailing ~N estimate', () => {
+    expect(parseTaskShorthand('Write report ~3')).toEqual({ description: 'Write report', estimatedSlots: 3 });
+  });
+
+  it('works alongside the ### timing shorthand', () => {
+    const result = parseTaskShorthand('Write report ~2###1,09:00');
+    expect(result.estimatedSlots).toBe(2);
+    expect(result.description).toBe('Write report###1,09:00');
+    expect(result.distractionCount).toBe(1);
+  });
+
+  it('clamps large estimates and ignores ~0 or mid-text tildes', () => {
+    expect(parseTaskShorthand('Big ~40').estimatedSlots).toBe(6);
+    expect(parseTaskShorthand('Nothing ~0')).toEqual({ description: 'Nothing ~0' });
+    expect(parseTaskShorthand('About ~5 things')).toEqual({ description: 'About ~5 things' });
+  });
+});
+
+describe('parseTaskInput', () => {
+  it('returns a single task when there is no breakdown', () => {
+    expect(parseTaskInput('Write report ~2')).toEqual([{ description: 'Write report', estimatedSlots: 2 }]);
+  });
+
+  it('breaks "Goal >> a; b; c" into one task per step tagged with the goal', () => {
+    expect(parseTaskInput('Launch site >> buy domain; set up DNS ~2;  ; deploy')).toEqual([
+      { description: 'buy domain', goal: 'Launch site' },
+      { description: 'set up DNS', estimatedSlots: 2, goal: 'Launch site' },
+      { description: 'deploy', goal: 'Launch site' },
+    ]);
+  });
+
+  it('falls back to a single task when no steps follow >>', () => {
+    expect(parseTaskInput('Launch site >>')).toEqual([{ description: 'Launch site' }]);
   });
 });

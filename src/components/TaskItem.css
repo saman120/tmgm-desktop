@@ -465,3 +465,20 @@
   .remark-item, .remark-input-container input, .remark-textarea { border: 1px solid #000; }
   .remarks-modal-actions .save-btn { background: #000; color: #fff; }
 }
+/* Goal chip: the big task a 5-minute step was broken down from */
+.task-goal {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--hover-bg);
+  border: 1px solid var(--divider);
+  vertical-align: middle;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

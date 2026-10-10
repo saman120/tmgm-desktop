@@ -6,7 +6,7 @@ import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
 import { taskAPI } from './services/api';
-import { getLocalDayKey } from './utils/dateUtils';
+import { buildTaskStats, getStatusTransitionUpdates } from './utils/productivity';
 import './App.css';
 
 function App() {
@@ -53,11 +53,16 @@ function App() {
     }
   }, [sortTasks]);
 
-  const createTask = useCallback(async (data) => {
+  // Accepts one task payload or an array (a big task broken down into 5-minute steps).
+  const createTask = useCallback(async (dataOrList) => {
     try {
       setError(null);
-      const newTask = await taskAPI.createTask({ ...data, status: showRecent ? 'pending' : 'hold', title: 'Example' });
-      sortTasks([...tasks, newTask]);
+      const payloads = Array.isArray(dataOrList) ? dataOrList : [dataOrList];
+      const newTasks = [];
+      for (const data of payloads) {
+        newTasks.push(await taskAPI.createTask({ ...data, status: showRecent ? 'pending' : 'hold', title: 'Example' }));
+      }
+      sortTasks([...tasks, ...newTasks]);
     } catch (err) {
       console.error('Failed to create task:', err);
       setError('Failed to create task. Please try again.');
@@ -68,7 +73,11 @@ function App() {
   const updateTask = useCallback(async (taskId, updates) => {
     try {
       setError(null);
-      const updatedTask = await taskAPI.updateTask(taskId, updates);
+      const currentTask = tasks.find(task => task._id === taskId);
+      const updatedTask = await taskAPI.updateTask(taskId, {
+        ...getStatusTransitionUpdates(currentTask, updates.status),
+        ...updates
+      });
       sortTasks(tasks.map(task => task._id === taskId ? updatedTask : task));
     } catch (err) {
       console.error('Failed to update task:', err);
@@ -105,7 +114,7 @@ function App() {
         const index = prev.findIndex(t => t._id === matchId);
         if (index === -1) return prev;
         const next = [...prev];
-        next[index] = cleanServerTask;
+        next[index] = { ...prev[index], ...cleanServerTask };
         return next;
       });
     });
@@ -131,10 +140,12 @@ function App() {
     await deleteTask(taskId);
   }, [deleteTask]);
 
-  const handleReorder = useCallback(async (taskId, newOrder) => {
-    await updateTask(taskId, { order: newOrder });
-    sortTasks(tasks.map(task => task._id === taskId ? { ...task, order: newOrder } : task));
-  }, [tasks, sortTasks, updateTask]);
+  const handleReorder = useCallback(async (taskId, newOrder, newStatus) => {
+    const task = tasks.find(t => t._id === taskId);
+    const updates = { order: newOrder };
+    if (newStatus && task && newStatus !== task.status) updates.status = newStatus;
+    await updateTask(taskId, updates);
+  }, [tasks, updateTask]);
 
   const filteredTasks = useMemo(() => {
     if (!showRecent) return tasks;
@@ -147,33 +158,9 @@ function App() {
     });
   }, [tasks, showRecent]);
 
-  // Pre-calculate stats using consistent keys
-  const taskStats = useMemo(() => {
-    const daily = {};
-    const hourly = {};
-    
-    filteredTasks.forEach(task => {
-      if (task.status === 'completed') {
-        const timestamp = task.inProgressAt || task.completedAt || task.updatedAt;
-        
-        if (timestamp) {
-          const taskDate = new Date(timestamp);
-          
-          // FIX: Use shared getLocalDayKey logic
-          const dayKey = getLocalDayKey(taskDate);
-          const hourKey = `${dayKey}-${taskDate.getHours()}`;
-
-          if (!daily[dayKey]) daily[dayKey] = { totalCompleted: 0 };
-          if (!hourly[hourKey]) hourly[hourKey] = { totalCompleted: 0 };
-
-          const taskWeight = 1 + (task.distractionCount || 0);
-          daily[dayKey].totalCompleted += taskWeight;
-          hourly[hourKey].totalCompleted += taskWeight;
-        }
-      }
-    });
-    return { daily, hourly };
-  }, [filteredTasks]);
+  // Stats are built from every task (not just the visible filter) so week buckets
+  // that straddle the 14-day "Recent" window still add up correctly.
+  const taskStats = useMemo(() => buildTaskStats(tasks), [tasks]);
 
   const clearError = useCallback(() => setError(null), []);
   const toggleShowRecent = useCallback(() => setShowRecent(prev => !prev), []);
