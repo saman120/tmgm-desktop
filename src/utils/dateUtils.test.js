@@ -1,4 +1,4 @@
-import { getLocalDayKey } from './dateUtils';
+import { getLocalDayKey, toDateTimeInputValue } from './dateUtils';
 
 describe('getLocalDayKey', () => {
   it('formats a plain date as YYYY-MM-DD', () => {
@@ -23,5 +23,13 @@ describe('getLocalDayKey', () => {
     const morning = new Date(2026, 6, 20, 0, 1);
     const night = new Date(2026, 6, 20, 23, 59);
     expect(getLocalDayKey(morning)).toBe(getLocalDayKey(night));
+  });
+});
+
+describe('toDateTimeInputValue', () => {
+  it('formats local time for datetime-local inputs and round-trips', () => {
+    const date = new Date(2026, 9, 9, 7, 5);
+    expect(toDateTimeInputValue(date)).toBe('2026-10-09T07:05');
+    expect(new Date(toDateTimeInputValue(date)).getTime()).toBe(date.getTime());
   });
 });

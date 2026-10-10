@@ -86,6 +86,7 @@ describe('task timing', () => {
     // Overtime start at 11:05 belongs to the 10:15 work phase.
     expect(wasTaskPlanned({ createdAt: at(7, 10, 20), inProgressAt: at(7, 11, 5) })).toBe(false);
     expect(wasTaskPlanned({ inProgressAt: at(7, 10, 30) })).toBeNull();
+    expect(wasTaskPlanned({ backfilled: true, createdAt: at(7, 9), inProgressAt: at(7, 10, 30) })).toBeNull();
   });
 
   it('stamps timestamps on status transitions only', () => {
@@ -113,6 +114,15 @@ describe('buildTaskStats', () => {
     expect(stats.hourly['2026-10-07-10'].tasksCompleted).toBe(2);
     expect(stats.weekly['2026-10-05'].tasksCompleted).toBe(3);
     expect(stats.daily['2026-10-05'].tasksCompleted).toBe(1);
+  });
+
+  it('reuses cached per-task data but reflects replaced task objects', () => {
+    const task = completedTask({ inProgressAt: at(7, 10, 15), completedAt: at(7, 10, 20) });
+    expect(buildTaskStats([task]).daily['2026-10-07'].tasksCompleted).toBe(1);
+    const moved = { ...task, inProgressAt: at(6, 10, 15), completedAt: at(6, 10, 20) };
+    const restats = buildTaskStats([moved]);
+    expect(restats.daily['2026-10-07']).toBeUndefined();
+    expect(restats.daily['2026-10-06'].tasksCompleted).toBe(1);
   });
 
   it('keeps the existing 1 + distractionCount slot weighting', () => {

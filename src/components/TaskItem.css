@@ -9,18 +9,18 @@
   padding: 2px;
   margin-bottom: 8px;
   background: var(--card-bg);
-  backdrop-filter: blur(20px);
   border: 1px solid var(--card-border);
   border-radius: 4px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.2s ease, padding 0.2s ease, opacity 0.2s ease;
   cursor: default;
+  /* Skip layout/paint for rows scrolled out of view (long "All Tasks" lists). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 40px;
 }
 
 .task-item:hover {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  /* Slight highlight using existing card variables */
-  filter: brightness(1.02);
 }
 
 .task-item.in-progress {

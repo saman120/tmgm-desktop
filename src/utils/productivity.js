@@ -117,8 +117,10 @@ export const getEstimationAccuracy = (task) => {
 
 // A task counts as planned when it was created before the work phase of the hour in
 // which it was started — i.e. during that hour's planning phase or earlier — rather
-// than added ad hoc mid-work. Unknown (null) if either timestamp is missing.
+// than added ad hoc mid-work. Unknown (null) if either timestamp is missing, or if the
+// task was logged after the fact (its createdAt says nothing about planning).
 export const wasTaskPlanned = (task) => {
+  if (task?.backfilled) return null;
   const created = toMs(task?.createdAt);
   const started = toMs(task?.inProgressAt);
   if (created === null || started === null) return null;
@@ -152,24 +154,47 @@ const emptyBucket = () => ({
   planKnownCount: 0,
 });
 
-const addToBucket = (buckets, key, task) => {
+// Per-task derived values, cached by task object. Updates replace task objects, so
+// unchanged tasks are never re-derived when stats are rebuilt after an edit.
+const derivedCache = new WeakMap();
+
+const getTaskDerived = (task) => {
+  let derived = derivedCache.get(task);
+  if (derived) return derived;
+
+  derived = null;
+  const timestamp = task.status === 'completed' ? getTaskBucketTime(task) : null;
+  const taskDate = timestamp ? new Date(timestamp) : null;
+  if (taskDate && !Number.isNaN(taskDate.getTime())) {
+    const dayKey = getLocalDayKey(taskDate);
+    derived = {
+      dayKey,
+      hourKey: `${dayKey}-${taskDate.getHours()}`,
+      weekKey: getWeekKey(taskDate),
+      distractions: task.distractionCount || 0,
+      accuracy: getEstimationAccuracy(task),
+      planned: wasTaskPlanned(task),
+    };
+  }
+  derivedCache.set(task, derived);
+  return derived;
+};
+
+const addToBucket = (buckets, key, derived) => {
   if (!buckets[key]) buckets[key] = emptyBucket();
   const bucket = buckets[key];
-  const distractions = task.distractionCount || 0;
-  bucket.totalCompleted += 1 + distractions;
+  bucket.totalCompleted += 1 + derived.distractions;
   bucket.tasksCompleted += 1;
-  bucket.distractions += distractions;
+  bucket.distractions += derived.distractions;
 
-  const accuracy = getEstimationAccuracy(task);
-  if (accuracy !== null) {
-    bucket.accuracySum += accuracy;
+  if (derived.accuracy !== null) {
+    bucket.accuracySum += derived.accuracy;
     bucket.accuracyCount += 1;
   }
 
-  const planned = wasTaskPlanned(task);
-  if (planned !== null) {
+  if (derived.planned !== null) {
     bucket.planKnownCount += 1;
-    if (planned) bucket.plannedCount += 1;
+    if (derived.planned) bucket.plannedCount += 1;
   }
 };
 
@@ -181,17 +206,11 @@ export const buildTaskStats = (tasks) => {
   const weekly = {};
 
   tasks.forEach(task => {
-    if (task.status !== 'completed') return;
-    const timestamp = getTaskBucketTime(task);
-    if (!timestamp) return;
-
-    const taskDate = new Date(timestamp);
-    if (Number.isNaN(taskDate.getTime())) return;
-    const dayKey = getLocalDayKey(taskDate);
-
-    addToBucket(daily, dayKey, task);
-    addToBucket(hourly, `${dayKey}-${taskDate.getHours()}`, task);
-    addToBucket(weekly, getWeekKey(taskDate), task);
+    const derived = getTaskDerived(task);
+    if (!derived) return;
+    addToBucket(daily, derived.dayKey, derived);
+    addToBucket(hourly, derived.hourKey, derived);
+    addToBucket(weekly, derived.weekKey, derived);
   });
 
   return { daily, hourly, weekly };

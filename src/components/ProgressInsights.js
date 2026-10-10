@@ -1,7 +1,7 @@
 // src/components/ProgressInsights.js - Hourly / daily / weekly progress overview
 import React, { useState, useEffect, useMemo } from 'react';
 import { SUMMARY_FIELDS, getColorForValue } from './DaySummaryForm';
-import { getLocalDayKey } from '../utils/dateUtils';
+import { getLocalDayKey, formatShortDate, formatWeekdayDay } from '../utils/dateUtils';
 import {
   OFFICIAL_START_HOUR,
   OFFICIAL_END_HOUR,
@@ -157,7 +157,7 @@ const ProgressInsights = ({ isOpen, onClose, stats, daySummaries, now }) => {
       <tbody>
         {data.days.map(d => (
           <tr key={d.dayKey} className={`${d.isToday ? 'pi-current' : ''} ${d.isFuture ? 'pi-future' : ''}`}>
-            <td>{d.date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}</td>
+            <td>{formatWeekdayDay(d.date)}</td>
             <td><SlotBar completed={d.completed} expected={d.expected} /></td>
             <td>{formatPercent(d.focus)}</td>
             <td>{formatPercent(d.accuracy)}</td>
@@ -180,7 +180,7 @@ const ProgressInsights = ({ isOpen, onClose, stats, daySummaries, now }) => {
         <tbody>
           {data.weeks.map(w => (
             <tr key={w.key} className={w.isCurrent ? 'pi-current' : ''}>
-              <td>{w.start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</td>
+              <td>{formatShortDate(w.start)}</td>
               <td><SlotBar completed={w.completed} expected={w.expected} /></td>
               <td>{w.distractions || ''}</td>
               <td>{formatPercent(w.focus)}</td>

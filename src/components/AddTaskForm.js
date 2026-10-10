@@ -1,10 +1,10 @@
 // src/components/AddTaskForm.js
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, History } from 'lucide-react';
 import { parseTaskInput } from '../utils/taskDescriptionParser';
 import './AddTaskForm.css';
 
-const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
+const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh, onLogPast }) => {
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef(null);
@@ -51,6 +51,14 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
         <button className="add-task-button" onClick={onOpen}>
           <Plus size={20} />
           <span>Add New Task</span>
+        </button>
+
+        <button
+          className="log-past-button"
+          onClick={() => onLogPast()}
+          title="Log a task you already did (an hour ago, yesterday...)"
+        >
+          <History size={16} />
         </button>
 
         <button 

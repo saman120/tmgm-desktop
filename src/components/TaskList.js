@@ -1,11 +1,11 @@
 // src/components/TaskList.js
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, startTransition } from 'react';
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import DaySummaryForm from './DaySummaryForm'; 
 import ProgressInsights from './ProgressInsights';
 import { taskAPI } from '../services/api';
-import { getLocalDayKey } from '../utils/dateUtils';
+import { getLocalDayKey, formatDayLabel, formatShortDate } from '../utils/dateUtils';
 import {
   OFFICIAL_START_HOUR,
   OFFICIAL_END_HOUR,
@@ -40,6 +40,7 @@ const TaskList = ({
   onReorder,
   onTaskUpdate,
   onShowRecentToggle,
+  onLogPast,
   showRecent
 }) => {
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -106,12 +107,12 @@ const TaskList = ({
     elapsedSlot = Math.floor(slotMinutes / 5) + 1; 
   }
 
-  const toggleGroup = (key, defaultCollapsed = false) => {
-    setCollapsedGroups(prev => ({
+  const toggleGroup = useCallback((key, defaultCollapsed = false) => {
+    startTransition(() => setCollapsedGroups(prev => ({
       ...prev,
       [key]: prev[key] !== undefined ? !prev[key] : !defaultCollapsed
-    }));
-  };
+    })));
+  }, []);
   
   const getHourlyStyle = (totalCompleted, expectedSlots, isOffTime) => {
     if (isOffTime) {
@@ -154,30 +155,50 @@ const TaskList = ({
     return { background: 'var(--stat-red-dark)', color: 'var(--stat-text-light)' }; 
   };
 
-  const handleDragStart = (e, index) => {
+  // Drag handlers are stable (they read live values through refs) and receive the
+  // row index from TaskItem, so memoized rows only re-render when their own
+  // isDragged / dragOverClass props change.
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const draggedIndexRef = useRef(null);
+  const dragOverIndexRef = useRef(null);
+  const onReorderRef = useRef(onReorder);
+  onReorderRef.current = onReorder;
+
+  const resetDrag = useCallback(() => {
+    draggedIndexRef.current = null;
+    dragOverIndexRef.current = null;
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  }, []);
+
+  const handleDragStart = useCallback((e, index) => {
+    draggedIndexRef.current = index;
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index);
-  };
+  }, []);
 
-  const handleDragOver = (e, index) => {
+  const handleDragOver = useCallback((e, index) => {
     e.preventDefault(); 
     e.dataTransfer.dropEffect = 'move';
-    if (draggedIndex !== null && draggedIndex !== index) {
-      if (dragOverIndex !== index) setDragOverIndex(index);
+    const dragged = draggedIndexRef.current;
+    if (dragged !== null && dragged !== index && dragOverIndexRef.current !== index) {
+      dragOverIndexRef.current = index;
+      setDragOverIndex(index);
     }
-  };
+  }, []);
 
-  const handleDrop = (e, dropIndex) => {
+  const handleDrop = useCallback((e, dropIndex) => {
     e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
+    const dragged = draggedIndexRef.current;
+    if (dragged === null || dragged === dropIndex) {
+      resetDrag();
       return;
     }
 
-    const newArray = [...tasks];
-    const [draggedTask] = newArray.splice(draggedIndex, 1);
+    const newArray = [...tasksRef.current];
+    const [draggedTask] = newArray.splice(dragged, 1);
     newArray.splice(dropIndex, 0, draggedTask);
 
     const prevTask = newArray[dropIndex - 1];
@@ -193,15 +214,9 @@ const TaskList = ({
     else if (!nextTask) newOrder = (prevTask?.order || 0) + 10;
     else newOrder = (prevTask.order + nextTask.order) / 2;
 
-    onReorder(draggedTask._id, newOrder, newStatus);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null); 
-  };
+    onReorderRef.current(draggedTask._id, newOrder, newStatus);
+    resetDrag();
+  }, [resetDrag]);
 
   const handleBreathingExercise = async () => {
     const today = getLocalDayKey(currentTime);
@@ -227,7 +242,9 @@ const TaskList = ({
     }
   };
 
-  const renderElements = useMemo(() => {
+  // Layout (dividers + which tasks are visible) only depends on data, so it is built
+  // once per data change; drag state is applied in a cheap second pass below.
+  const layout = useMemo(() => {
     const elements = [];
 
     let currentDayIter = new Date(currentTime);
@@ -256,7 +273,7 @@ const TaskList = ({
     const pushWeekDivider = (dateObj, weekKey) => {
       const weekStart = getWeekStart(dateObj);
       const week = summarizeBucket(stats.weekly[weekKey], getExpectedWeekSlots(weekStart, currentTime));
-      const displayWeek = weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const displayWeek = formatShortDate(weekStart);
 
       elements.push(
           <div className="time-divider week-divider" key={`week-${weekKey}`}>
@@ -276,7 +293,7 @@ const TaskList = ({
       const weekKey = getWeekKey(dateObj);
       if (weekKey !== lastWeekKey) pushWeekDivider(dateObj, weekKey);
 
-      const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+      const displayDate = formatDayLabel(dateObj);
       const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
       const isToday = dayKey === getLocalDayKey(currentTime);
       const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
@@ -377,30 +394,8 @@ const TaskList = ({
     };
 
     tasks.forEach((task, index) => {
-        let dragOverClass = '';
-        if (dragOverIndex === index) {
-            dragOverClass = draggedIndex < index ? 'drag-over-bottom' : 'drag-over-top';
-        }
-
         if (task.status !== 'completed') {
-            elements.push(
-                <TaskItem
-                    key={task._id}
-                    task={task}
-                    isFirst={index === 0 && task.status === 'in-progress'}
-                    onStatusToggle={onStatusToggle}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onDelete={onDelete}
-                    draggable={true}
-                    onTaskUpdate={onTaskUpdate}
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragEnd={handleDragEnd}
-                    isDragged={draggedIndex === index}
-                    dragOverClass={dragOverClass}
-                />
-            );
+            elements.push({ task, index, isFirst: index === 0 && task.status === 'in-progress' });
             return;
         }
 
@@ -436,24 +431,7 @@ const TaskList = ({
         const isHourCollapsed = collapsedGroups[hourKey] ?? false;
 
         if (!isDayCollapsed && !isHourCollapsed) {
-            elements.push(
-                <TaskItem
-                    key={task._id}
-                    task={task}
-                    isFirst={false}
-                    onStatusToggle={onStatusToggle}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onDelete={onDelete}
-                    draggable={true}
-                    onTaskUpdate={onTaskUpdate}
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragEnd={handleDragEnd}
-                    isDragged={draggedIndex === index}
-                    dragOverClass={dragOverClass}
-                />
-            );
+            elements.push({ task, index, isFirst: false });
         }
     });
 
@@ -467,7 +445,36 @@ const TaskList = ({
 
     return elements;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, stats, collapsedGroups, showRecent, draggedIndex, dragOverIndex, daySummaries, currentMinuteKey]);
+  }, [tasks, stats, collapsedGroups, showRecent, daySummaries, currentMinuteKey]);
+
+  const renderElements = useMemo(() => layout.map(row => {
+    if (React.isValidElement(row)) return row;
+    const { task, index, isFirst } = row;
+    let dragOverClass = '';
+    if (dragOverIndex === index) {
+      dragOverClass = draggedIndex < index ? 'drag-over-bottom' : 'drag-over-top';
+    }
+    return (
+      <TaskItem
+        key={task._id}
+        task={task}
+        isFirst={isFirst}
+        onStatusToggle={onStatusToggle}
+        onDescriptionUpdate={onDescriptionUpdate}
+        onDelete={onDelete}
+        draggable={true}
+        onTaskUpdate={onTaskUpdate}
+        onLogPast={onLogPast}
+        index={index}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onDragEnd={resetDrag}
+        isDragged={draggedIndex === index}
+        dragOverClass={dragOverClass}
+      />
+    );
+  }), [layout, draggedIndex, dragOverIndex, onStatusToggle, onDescriptionUpdate, onDelete, onTaskUpdate, onLogPast, handleDragStart, handleDragOver, handleDrop, resetDrag]);
 
   if (tasks.length === 0) {
     return <EmptyState onRefresh={onRefresh} />;

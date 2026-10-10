@@ -30,6 +30,8 @@ TMGM is an Electron + React (CRA) desktop app for running a personal task/time-b
 
 ### Data layer is local-first (`src/services/api.js`)
 
+`localStorage` is parsed once into an in-memory cache; writes update the cache immediately and are JSON-serialised to disk on a 250 ms debounce (flushed on `pagehide`/`beforeunload`/hidden). `getStoredTasks`/`getStoredDaySummaries` return shallow copies — callers mutate before writing back. `getAllTasks` returns stored tasks immediately and reconciles via `refreshFromServer()` in the background (App listens with `subscribeToTasksRefreshed`); it only awaits the network on a first run with nothing stored. Local edits/deletes made while a refresh is in flight win over the server snapshot (`locallyTouchedAt` / `locallyDeleted`).
+
 Every `taskAPI` method (`getAllTasks`, `createTask`, `updateTask`, `deleteTask`, `getDaySummaryByDate`, `updateDaySummaryByDate`) writes to `localStorage` (`tmgm_tasks`, `tmgm_day_summaries`) synchronously and returns immediately, then fires the matching HTTP call to `REACT_APP_API_BASE_URL` (default `http://localhost:3840`, separate from the CRA dev server port) in the background via `runInBackground`, reconciling storage when/if it resolves. Failures in the background sync are swallowed — the UI never blocks on or surfaces backend availability. Server copies are merged *over* the local record (`mergeServerRecord`) rather than replacing it, so client-only fields the backend may not persist (`estimatedSlots`, `goal`, newer day-summary fields) survive a sync; `getAllTasks` also keeps never-synced `local-*` tasks. `createTask`/`updateTask` stamp `createdAt`/`updatedAt` locally. When touching this layer, preserve the local-write-first / best-effort-remote-sync pattern; the app is designed to be fully usable offline.
 
 ### Task lifecycle and time-boxing model
@@ -37,6 +39,7 @@ Every `taskAPI` method (`getAllTasks`, `createTask`, `updateTask`, `deleteTask`,
 - Status flow: `backlog`/`hold` → `pending` → `in-progress` → `completed`, cycled in `App.js`'s `handleStatusToggle` (`statusCycle` map) and set directly via the per-item action buttons in `TaskItem.js`. `App.updateTask` stamps `inProgressAt`/`completedAt` on status transitions (`getStatusTransitionUpdates`) so timing data exists offline; explicit values in the update win.
 - Estimates: `estimatedSlots` (1–6 five-minute slots, default 1). Set with a trailing ` ~N` in the description (stripped) or by clicking the ⏳ badge on a task. >1 slot is a hint to break the task down.
 - Breakdown: in the add form, `Big task >> step one; step two ~2; step three` creates one task per step, each tagged with `goal` (shown as a chip). Parsing lives in `utils/taskDescriptionParser.js` (`parseTaskInput` / `parseTaskShorthand`).
+- Logging past work: `PastEntryForm.js` (opened from the 🕘 button next to "Add New Task", or the 🕘 action on a task, via App's `openPastEntry`) creates completed tasks with explicit `inProgressAt`/`completedAt` (breakdown steps laid back to back, marked `backfilled: true`, which excludes them from the "planned" metric), or marks/edits an existing task as completed at a past time.
 - Manual ordering: tasks carry a numeric `order`; drag-and-drop in `TaskList.js` (`handleDrop`) recomputes it by averaging neighboring `order` values (or ±10 at the ends) and can also change `status` if dropped between differently-status'd neighbors (`App.handleReorder` applies both).
 - `showRecent` toggle in `App.js` filters to "Recent Active" (last 14 days, excludes `hold`/`backlog`) vs "All Tasks".
 - Encoding extra data through the description field: both `AddTaskForm.js` and `TaskItem.js`'s inline edit parse a `###` suffix on the typed description as `distractionCount,inProgressAt,completedAt` (comma-separated, times in `HH:MM` for today) — a shorthand for backdating/seeding a task's timing data without a dedicated form field. Both go through the shared `utils/taskDescriptionParser.js`.
@@ -47,6 +50,15 @@ Every `taskAPI` method (`getAllTasks`, `createTask`, `updateTask`, `deleteTask`,
 - On every wall-clock multiple of 5 minutes, `playBlipSound()` plays `public/beep.mp3` (also triggered manually by clicking the stats bar, and by "Breathe" logging). This is a renderer-side `Audio()` call, independent of the (currently unused) main-process notification timer described above.
 - Completed-task coloring (`TaskItem.js` `completedStyle`): a gradient built from two independent axes — `delayCount` (time overrun: purple if <0.5, green baseline, red-1/2/3 as it climbs past 2/5/10) and `distractionCount` (green baseline, yellow-1/2/3 past 1/5/10). Both counts and their color thresholds are also what `count-button` badges on each task display.
 - Day/hour divider coloring in `TaskList.js` (`getDailyStyle` / `getHourlyStyle`) is a *separate* color scale (green→yellow→red based on completed-slot throughput vs. expected slots for the elapsed time), weighted-off for weekends/off-hours (before 9am/after 7pm), and neutral-grey for "before 10am with zero completions yet" so an idle morning doesn't read as red.
+
+### Rendering performance
+
+The list can hold thousands of tasks, so keep these invariants when editing:
+- App callbacks passed down (`updateTask`, `handleStatusToggle`, …) must stay referentially stable — they read current tasks through `tasksRef` and use functional `setTasks`. `TaskItem` is `React.memo`'d; any new prop must be stable too (TaskList's drag handlers take the row `index` from TaskItem rather than being per-row closures).
+- `TaskList` builds `layout` (dividers + visible task descriptors) in one memo keyed on data only; drag state is applied in a cheap second memo (`renderElements`).
+- Sorting (`sortTaskList`) precomputes keys; `buildTaskStats` caches per-task derived values in a `WeakMap` keyed by task object (updates replace objects, so unchanged tasks aren't re-derived).
+- Use the cached formatters in `utils/dateUtils.js` (`formatDayLabel`, …) instead of `toLocaleDateString` in render loops.
+- `.task-item` uses `content-visibility: auto` and no `backdrop-filter`; view switches and day/hour collapse run in `startTransition`.
 
 ### Stats aggregation and progress metrics
 

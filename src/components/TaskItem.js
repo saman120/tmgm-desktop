@@ -10,6 +10,14 @@ import {
 } from '../utils/productivity';
 import './TaskItem.css';
 
+// Keeps the status bubble readable for tasks left in progress for hours or days.
+const formatElapsed = (minutes) => {
+  if (!minutes) return '';
+  if (minutes < 60) return minutes;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)}h`;
+  return `${Math.floor(minutes / (24 * 60))}d`;
+};
+
 const TaskItem = ({ 
   task, 
   isFirst, 
@@ -17,7 +25,9 @@ const TaskItem = ({
   onDescriptionUpdate,
   onDelete,
   onTaskUpdate, 
+  onLogPast,
   draggable,
+  index,
   onDragStart,
   onDragOver,
   onDrop,
@@ -209,7 +219,7 @@ const TaskItem = ({
   };
 
   const getStatusIcon = (status) => {
-    return status === 'completed' ? '✔' : (elapsedMinutes || '');
+    return status === 'completed' ? '✔' : formatElapsed(elapsedMinutes);
   };
   
   const completedStyle = useMemo(() => {
@@ -242,9 +252,9 @@ const TaskItem = ({
         className={`task-item ${task.status} ${isFirst && task.status === 'in-progress' ? 'current-task' : ''} ${isDragged ? 'dragging' : ''} ${dragOverClass || ''} fade-in`}
         draggable={task.status !== 'completed'}
         style={completedStyle} 
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
+        onDragStart={(e) => onDragStart(e, index)}
+        onDragOver={(e) => onDragOver(e, index)}
+        onDrop={(e) => onDrop(e, index)}
         onDragEnd={onDragEnd}
       >
         <div className="drag-handle" title="Drag to reorder">
@@ -320,6 +330,14 @@ const TaskItem = ({
               title={`Estimation accuracy: estimated ${estimatedSlots * SLOT_MINUTES}m, took ${Math.round(getActualMinutes(task))}m`}
             >
               <span className="status-icon">🎯</span> {Math.round(estimationAccuracy * 100)}%
+            </button>}
+
+            {onLogPast && <button
+              className='delete-button'
+              title={task.status === 'completed' ? 'Edit start/end times' : 'Log as done earlier (pick when you did it)'}
+              onClick={() => onLogPast(task)}
+            >
+              <span className="status-icon">🕘 </span>
             </button>}
 
             {task.status !== 'completed' && <button className='delete-button' title="Set completed" onClick={() => handleStatusClick('completed')}>
