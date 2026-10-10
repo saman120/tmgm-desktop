@@ -1,7 +1,7 @@
 // src/components/AddTaskForm.js
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
-import { parseTaskShorthand } from '../utils/taskDescriptionParser';
+import { parseTaskInput } from '../utils/taskDescriptionParser';
 import './AddTaskForm.css';
 
 const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
@@ -24,8 +24,8 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
     try {
       setIsSubmitting(true);
       setDescription('');
-      const data = parseTaskShorthand(trimmedDescription);
-      await onSubmit(data);
+      const payloads = parseTaskInput(trimmedDescription);
+      await onSubmit(payloads.length === 1 ? payloads[0] : payloads);
     } catch (error) {
       console.error('Failed to create task:', error);
       setDescription(trimmedDescription);
@@ -74,7 +74,7 @@ const AddTaskForm = ({ isOpen, onOpen, onClose, onSubmit, onRefresh }) => {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="What needs to be done?"
+            placeholder="What needs to be done? (~2 = 10 min estimate · Big task >> step 1; step 2)"
             className="task-input"
             maxLength={500}
             required

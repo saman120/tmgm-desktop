@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import './DaySummaryForm.css';
 import { taskAPI } from '../services/api';
+import { formatPercent, getScoreStyle } from '../utils/productivity';
 
-const SUMMARY_FIELDS = [
+export const SUMMARY_FIELDS = [
   { id: 'morningBM', label: 'Morning B.M.', type: 'toggle', group: 'Morning' },
   { id: 'morningWalk', label: 'Morning Walk', type: 'toggle', group: 'Morning' },
   { id: 'breathingExec', label: 'Breathing exec', type: 'numberBar', min: 0, max: 10, group: 'Morning' },
@@ -16,9 +17,17 @@ const SUMMARY_FIELDS = [
   { id: 'stressLevel', label: 'Stress level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary', reverseColor: true },
   { id: 'tirednessLevel', label: 'Tiredness level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary', reverseColor: true },
   { id: 'healthLevel', label: 'Health level', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'moodLevel', label: 'Mood', type: 'numberBar', min: 1, max: 10, group: 'DaySummary' },
+  { id: 'sleepHours', label: 'Sleep (hrs)', type: 'numberBar', min: 0, max: 10, group: 'Habits' },
+  { id: 'waterGlasses', label: 'Water (glasses)', type: 'numberBar', min: 0, max: 10, group: 'Habits' },
+  { id: 'screenTimeHours', label: 'Leisure screen (hrs)', type: 'numberBar', min: 0, max: 10, group: 'Habits', reverseColor: true },
+  { id: 'exercise', label: 'Exercise', type: 'toggle', group: 'Habits' },
+  { id: 'learning', label: 'Learned something', type: 'toggle', group: 'Habits' },
+  { id: 'eveningReview', label: 'Evening review', type: 'toggle', group: 'Habits' },
+  { id: 'nextDayPlanned', label: 'Planned tomorrow', type: 'toggle', group: 'Habits' },
 ];
 
-const getColorForValue = (value, min, max, reverse = false) => {
+export const getColorForValue = (value, min, max, reverse = false) => {
   const clampedValue = Math.max(min, Math.min(value, max));
   let percentage = (clampedValue - min) / (max - min);
   
@@ -30,7 +39,34 @@ const getColorForValue = (value, min, max, reverse = false) => {
   return `hsl(${hue}, 90%, 45%)`; 
 };
 
-const DaySummaryForm = ({ isOpen, date, onClose }) => {
+// Read-only work metrics for the day, computed from completed tasks (see utils/productivity).
+const renderWorkMetrics = (metrics) => {
+  const items = [
+    { label: 'Score', value: metrics.score ?? '–', style: getScoreStyle(metrics.score) },
+    { label: 'Slots', value: metrics.expected > 0 ? `${metrics.completed}/${metrics.expected}` : metrics.completed },
+    { label: 'Tasks done', value: metrics.tasks },
+    { label: 'Distractions', value: metrics.distractions },
+    { label: 'Focus', value: formatPercent(metrics.focus) },
+    { label: 'Estimate accuracy', value: formatPercent(metrics.accuracy) },
+    { label: 'Planned ahead', value: formatPercent(metrics.planned) },
+  ];
+
+  return (
+    <div className="summary-group">
+      <h4 className="summary-group-title">Work (auto-calculated)</h4>
+      <div className="summary-metrics-grid">
+        {items.map(item => (
+          <div className="summary-metric" key={item.label}>
+            <span className="summary-metric-value" style={item.style}>{item.value}</span>
+            <span className="summary-metric-label">{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const DaySummaryForm = ({ isOpen, date, metrics, onClose }) => {
   const [formData, setFormData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -190,6 +226,8 @@ const DaySummaryForm = ({ isOpen, date, onClose }) => {
         {error && <div className="error-message" style={{ color: '#ff3b30', fontSize: '13px', marginBottom: '8px' }}>{error}</div>}
 
         <form onSubmit={handleSubmit} className="summary-form compact-layout">
+          {metrics && renderWorkMetrics(metrics)}
+
           {Object.entries(groupedFields).map(([groupName, fields]) => (
             <div className="summary-group" key={groupName}>
               <h4 className="summary-group-title">{groupName}</h4>

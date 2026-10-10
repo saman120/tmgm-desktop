@@ -31,6 +31,11 @@ const setStoredTasks = (tasks) => writeStorage(STORAGE_KEYS.tasks, Array.isArray
 const getStoredDaySummaries = () => readStorage(STORAGE_KEYS.daySummaries, {});
 const setStoredDaySummaries = (daySummaries) => writeStorage(STORAGE_KEYS.daySummaries, daySummaries || {});
 
+// The backend may not persist fields it doesn't know about (e.g. estimatedSlots, goal,
+// newer day-summary fields), so server copies are layered over the local record rather
+// than replacing it outright.
+const mergeServerRecord = (localRecord, serverRecord) => ({ ...(localRecord || {}), ...serverRecord });
+
 const runInBackground = (promise) => {
   promise.catch(() => {
     // ignore background sync errors
@@ -99,7 +104,13 @@ export const taskAPI = {
   async getAllTasks() {
     try {
       const tasks = await apiRequest('/api/tasks');
-      const normalized = Array.isArray(tasks) ? tasks : [];
+      const localById = new Map(getStoredTasks().map((task) => [String(task?._id), task]));
+      const serverTasks = (Array.isArray(tasks) ? tasks : [])
+        .map((task) => mergeServerRecord(localById.get(String(task?._id)), task));
+      // Keep tasks created offline whose POST never reached the server.
+      const unsyncedLocalTasks = [...localById.values()]
+        .filter((task) => String(task?._id).startsWith('local-'));
+      const normalized = [...serverTasks, ...unsyncedLocalTasks];
       setStoredTasks(normalized);
       return normalized;
     } catch {
@@ -117,13 +128,14 @@ export const taskAPI = {
         if (!serverTask) return;
         const nextTasks = getStoredTasks();
         const index = nextTasks.findIndex((task) => String(task?._id) === String(id));
+        const merged = mergeServerRecord(nextTasks[index], serverTask);
         if (index >= 0) {
-          nextTasks[index] = serverTask;
+          nextTasks[index] = merged;
         } else {
-          nextTasks.push(serverTask);
+          nextTasks.push(merged);
         }
         setStoredTasks(nextTasks);
-        notifyTaskSynced(serverTask);
+        notifyTaskSynced(merged);
       })
     );
 
@@ -134,7 +146,8 @@ export const taskAPI = {
   async createTask(taskData) {
     const localTasks = getStoredTasks();
     const tempId = taskData?._id ?? `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const localTask = { ...taskData, _id: tempId };
+    const now = new Date().toISOString();
+    const localTask = { createdAt: now, updatedAt: now, ...taskData, _id: tempId };
     setStoredTasks([...localTasks, localTask]);
 
     runInBackground(
@@ -144,9 +157,11 @@ export const taskAPI = {
       }).then((createdTask) => {
         if (!createdTask) return;
         const current = getStoredTasks();
-        const next = current.map((task) => (String(task?._id) === String(tempId) ? createdTask : task));
+        const localCopy = current.find((task) => String(task?._id) === String(tempId)) || localTask;
+        const merged = mergeServerRecord(localCopy, createdTask);
+        const next = current.map((task) => (String(task?._id) === String(tempId) ? merged : task));
         setStoredTasks(next);
-        notifyTaskSynced({ ...createdTask, tempId });
+        notifyTaskSynced({ ...merged, tempId });
       })
     );
 
@@ -157,9 +172,10 @@ export const taskAPI = {
   async updateTask(id, updates) {
     const localTasks = getStoredTasks();
     const index = localTasks.findIndex((task) => String(task?._id) === String(id));
+    const updatedAt = new Date().toISOString();
     const updatedLocalTask = index >= 0
-      ? { ...localTasks[index], ...updates }
-      : { _id: id, ...updates };
+      ? { ...localTasks[index], updatedAt, ...updates }
+      : { _id: id, updatedAt, ...updates };
 
     if (index >= 0) {
       localTasks[index] = updatedLocalTask;
@@ -176,13 +192,14 @@ export const taskAPI = {
         if (!serverTask) return;
         const current = getStoredTasks();
         const serverIndex = current.findIndex((task) => String(task?._id) === String(id));
+        const merged = mergeServerRecord(current[serverIndex], serverTask);
         if (serverIndex >= 0) {
-          current[serverIndex] = serverTask;
+          current[serverIndex] = merged;
         } else {
-          current.push(serverTask);
+          current.push(merged);
         }
         setStoredTasks(current);
-        notifyTaskSynced(serverTask);
+        notifyTaskSynced(merged);
       })
     );
 
@@ -222,8 +239,9 @@ export const taskAPI = {
 
     runInBackground(
       apiRequest(`/api/day-summaries/${date}`).then((serverSummary) => {
+        if (!serverSummary) return;
         const current = getStoredDaySummaries();
-        current[date] = serverSummary;
+        current[date] = mergeServerRecord(current[date], serverSummary);
         setStoredDaySummaries(current);
       })
     );
@@ -246,8 +264,9 @@ export const taskAPI = {
         method: 'PUT',
         body: JSON.stringify(daySummaryData)
       }).then((serverSummary) => {
+        if (!serverSummary) return;
         const current = getStoredDaySummaries();
-        current[date] = serverSummary;
+        current[date] = mergeServerRecord(current[date], serverSummary);
         setStoredDaySummaries(current);
       })
     );

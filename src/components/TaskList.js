@@ -3,8 +3,21 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import TaskItem from './TaskItem';
 import EmptyState from './EmptyState';
 import DaySummaryForm from './DaySummaryForm'; 
+import ProgressInsights from './ProgressInsights';
 import { taskAPI } from '../services/api';
 import { getLocalDayKey } from '../utils/dateUtils';
+import {
+  OFFICIAL_START_HOUR,
+  OFFICIAL_END_HOUR,
+  TOTAL_EXPECTED_DAILY_SLOTS,
+  getExpectedDaySlots,
+  getExpectedWeekSlots,
+  getWeekStart,
+  getWeekKey,
+  summarizeBucket,
+  formatPercent,
+  getScoreStyle
+} from '../utils/productivity';
 import './TaskList.css';
 
 const playBlipSound = () => {
@@ -15,26 +28,6 @@ const playBlipSound = () => {
   } catch (e) {
     console.error("Failed to play audio:", e);
   }
-};
-
-// Official working window used for the day divider's completed/expected slot count
-const OFFICIAL_START_HOUR = 9;
-const OFFICIAL_END_HOUR = 18; // 6 PM
-const SLOTS_PER_OFFICIAL_HOUR = 8;
-const OFFICIAL_HOURS_COUNT = OFFICIAL_END_HOUR - OFFICIAL_START_HOUR;
-const TOTAL_EXPECTED_DAILY_SLOTS = SLOTS_PER_OFFICIAL_HOUR * OFFICIAL_HOURS_COUNT;
-
-// How many official hours have started so far: 0 before the window opens, growing by
-// one each official hour, capped at the full count once the window has closed. Past
-// days have the whole window behind them, so they're always compared against the full total.
-// `referenceTime` must be the actual current clock time, not the (often midnight) date
-// being rendered, so "today" only counts hours that have really elapsed.
-const getOfficialHoursElapsed = (referenceTime, isToday) => {
-  if (!isToday) return OFFICIAL_HOURS_COUNT;
-  const hour = referenceTime.getHours();
-  if (hour < OFFICIAL_START_HOUR) return 0;
-  if (hour >= OFFICIAL_END_HOUR) return OFFICIAL_HOURS_COUNT;
-  return Math.min(OFFICIAL_HOURS_COUNT, hour - OFFICIAL_START_HOUR + 1);
 };
 
 const TaskList = ({ 
@@ -58,6 +51,8 @@ const TaskList = ({
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [summaryModalDay, setSummaryModalDay] = useState(null);
   const [daySummaries, setDaySummaries] = useState({});
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const closeInsights = useCallback(() => setIsInsightsOpen(false), []);
 
   const [isBreathingLoading, setIsBreathingLoading] = useState(false);
   const [lastBreathedHour, setLastBreathedHour] = useState(localStorage.getItem('lastBreathedHour') || null);
@@ -256,8 +251,31 @@ const TaskList = ({
 
     let lastDayKey = null;
     let lastHourKey = null;
+    let lastWeekKey = null;
+
+    const pushWeekDivider = (dateObj, weekKey) => {
+      const weekStart = getWeekStart(dateObj);
+      const week = summarizeBucket(stats.weekly[weekKey], getExpectedWeekSlots(weekStart, currentTime));
+      const displayWeek = weekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+      elements.push(
+          <div className="time-divider week-divider" key={`week-${weekKey}`}>
+              <span
+                className="time-divider-text week-text"
+                style={getScoreStyle(week.score)}
+                title={`Week of ${displayWeek}: ${week.completed}/${week.expected} slots • ${week.tasks} tasks • ${week.distractions} distractions • focus ${formatPercent(week.focus)} • estimate accuracy ${formatPercent(week.accuracy)} • planned ahead ${formatPercent(week.planned)}`}
+              >
+                  Week of {displayWeek} • {week.completed}/{week.expected} slots • score {week.score ?? '–'}
+              </span>
+          </div>
+      );
+      lastWeekKey = weekKey;
+    };
 
     const pushDayDivider = (dateObj, dayKey) => {
+      const weekKey = getWeekKey(dateObj);
+      if (weekKey !== lastWeekKey) pushWeekDivider(dateObj, weekKey);
+
       const displayDate = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
       const dayStats = stats.daily[dayKey] || { totalCompleted: 0 };
       const isToday = dayKey === getLocalDayKey(currentTime);
@@ -277,10 +295,14 @@ const TaskList = ({
       const dayStyle = getDailyStyle(dailyAvg, isWeekend, isEarlyMorningNeutral);
       const isCollapsed = collapsedGroups[dayKey] ?? !isToday;
 
-      const expectedSlotsSoFar = SLOTS_PER_OFFICIAL_HOUR * getOfficialHoursElapsed(currentTime, isToday);
+      const expectedSlotsSoFar = getExpectedDaySlots(dateObj, currentTime);
       const remainingSlots = Math.max(0, expectedSlotsSoFar - dayStats.totalCompleted);
-      const statsText = ` • ${dayStats.totalCompleted}/${expectedSlotsSoFar} slots (${remainingSlots} remaining)`;
+      const statsText = isWeekend
+        ? ` • ${dayStats.totalCompleted} slots`
+        : ` • ${dayStats.totalCompleted}/${expectedSlotsSoFar} slots (${remainingSlots} remaining)`;
       const hasSummary = !!daySummaries[dayKey];
+      const dayMetrics = summarizeBucket(stats.daily[dayKey], expectedSlotsSoFar);
+      const metricsTitle = `${dayMetrics.tasks} tasks • ${dayMetrics.distractions} distractions • focus ${formatPercent(dayMetrics.focus)} • estimate accuracy ${formatPercent(dayMetrics.accuracy)} • planned ahead ${formatPercent(dayMetrics.planned)} • score ${dayMetrics.score ?? '–'}`;
 
       elements.push(
           <div className="time-divider day-divider" key={`day-${dayKey}`}>
@@ -288,9 +310,10 @@ const TaskList = ({
                 className="time-divider-text day-text"
                 style={{ ...dayStyle, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
                 onClick={() => toggleGroup(dayKey, !isToday)}
-                title={`${dayStats.totalCompleted} of ${expectedSlotsSoFar} expected slots so far (official ${OFFICIAL_START_HOUR}am-${OFFICIAL_END_HOUR - 12}pm, full-day target ${TOTAL_EXPECTED_DAILY_SLOTS}), ${remainingSlots} remaining • ${dailyAvg.toFixed(1)} slots/hr avg (over ${hoursElapsed.toFixed(1)} hrs)`}
+                title={`${isWeekend ? `${dayStats.totalCompleted} slots (weekend)` : `${dayStats.totalCompleted} of ${expectedSlotsSoFar} expected slots so far (official ${OFFICIAL_START_HOUR}am-${OFFICIAL_END_HOUR - 12}pm, full-day target ${TOTAL_EXPECTED_DAILY_SLOTS}), ${remainingSlots} remaining`} • ${dailyAvg.toFixed(1)} slots/hr avg (over ${hoursElapsed.toFixed(1)} hrs)\n${metricsTitle}`}
               >
                   <span>{isCollapsed ? '▶ ' : '▼ '} {displayDate}{statsText}</span>
+                  {dayMetrics.score !== null && <span className="divider-score">{dayMetrics.score}</span>}
 
                   <button
                     className="day-summary-edit-btn"
@@ -330,6 +353,8 @@ const TaskList = ({
       }
 
       const hourStyle = getHourlyStyle(hourStats.totalCompleted, expectedSlots, isOffTime);
+      const hourMetrics = summarizeBucket(stats.hourly[hourKey]);
+      const hourMetricsTitle = `${hourMetrics.tasks} tasks • ${hourMetrics.distractions} distractions • estimate accuracy ${formatPercent(hourMetrics.accuracy)} • planned ahead ${formatPercent(hourMetrics.planned)}`;
       const isCollapsed = collapsedGroups[hourKey] ?? false;
 
       const statsText = isOffTime
@@ -342,7 +367,7 @@ const TaskList = ({
                 className="time-divider-text hour-text"
                 style={{ ...hourStyle, cursor: 'pointer', userSelect: 'none' }}
                 onClick={() => toggleGroup(hourKey, false)}
-                title={isOffTime ? `Off-hours slots: ${hourStats.totalCompleted}` : `Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}
+                title={`${isOffTime ? `Off-hours slots: ${hourStats.totalCompleted}` : `Slots Completed: ${hourStats.totalCompleted} (Expected: ~${expectedSlots})`}\n${hourMetricsTitle}`}
               >
                   {isCollapsed ? '▶ ' : '▼ '} {displayHour} {ampm}{statsText}
               </span>
@@ -466,6 +491,13 @@ const TaskList = ({
           >
             All Tasks
           </button>
+          <button
+            className="toggle-btn progress-btn"
+            onClick={() => setIsInsightsOpen(true)}
+            title="Hourly / daily / weekly progress"
+          >
+            📊
+          </button>
           <button className="refresh-button" onClick={onRefresh} title="Refresh tasks"></button>
         </div>
 
@@ -507,10 +539,19 @@ const TaskList = ({
       <DaySummaryForm
         isOpen={!!summaryModalDay}
         date={summaryModalDay}
+        metrics={summaryModalDay ? summarizeBucket(stats.daily[summaryModalDay], getExpectedDaySlots(new Date(`${summaryModalDay}T00:00:00`), currentTime)) : null}
         onClose={() => {
           setSummaryModalDay(null);
           refreshDaySummaries();
         }}
+      />
+
+      <ProgressInsights
+        isOpen={isInsightsOpen}
+        onClose={closeInsights}
+        stats={stats}
+        daySummaries={daySummaries}
+        now={currentTime}
       />
     </div>
   );

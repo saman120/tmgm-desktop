@@ -273,3 +273,31 @@ input:checked + .toggle-slider:before {
   cursor: pointer;
   border: none;
 }
+/* Auto-calculated work metrics */
+.summary-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.summary-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.summary-metric-value {
+  min-width: 48px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.summary-metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
